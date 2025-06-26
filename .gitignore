@@ -95,3 +95,4 @@ storybook-static
 # GEMINI system file
 GEMINI.md
 .github/copilot-instruction.md
+IMPLEMENTATION_SUMMARY.md
