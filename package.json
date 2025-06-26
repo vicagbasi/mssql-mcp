@@ -1,7 +1,7 @@
 {
   "name": "mssql-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Microsoft SQL Server database access and schema exploration",
+  "description": "MCP server for Microsoft SQL Server database access and schema exploration using tedious",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -16,17 +16,18 @@
     "model-context-protocol",
     "mssql",
     "sql-server",
-    "database"
+    "database",
+    "tedious"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "mssql": "^11.0.1",
+    "tedious": "^19.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/mssql": "^9.1.7",
+    "@types/tedious": "^4.0.14",
     "@types/node": "^22.9.0",
     "rimraf": "^6.0.1",
     "typescript": "^5.6.3"
