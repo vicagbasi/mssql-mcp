@@ -1,5 +1,5 @@
 import { McpServer, McpConnection, McpTool } from '@modelcontextprotocol/sdk';
-import { createDbConnection } from './db';
+import { createDbConnection } from './db.js';
 import { Connection, Request } from 'tedious';
 
 const server = new McpServer();
@@ -38,7 +38,7 @@ server.on('connection', async (connection: McpConnection) => {
           }
         });
 
-        request.on('row', (columns) => {
+        request.on('row', (columns: any[]) => {
           tables.push(columns[0].value);
         });
 
@@ -68,7 +68,7 @@ server.on('connection', async (connection: McpConnection) => {
           }
         });
 
-        request.on('row', (columns) => {
+        request.on('row', (columns: any[]) => {
           schema[columns[0].value] = columns[1].value;
         });
 
@@ -110,7 +110,7 @@ server.on('connection', async (connection: McpConnection) => {
           }
         });
 
-        request.on('row', (columns) => {
+        request.on('row', (columns: any[]) => {
           const row: { [columnName: string]: any } = {};
           columns.forEach(column => {
             row[column.metadata.colName] = column.value;
@@ -148,7 +148,7 @@ server.on('connection', async (connection: McpConnection) => {
           }
         });
 
-        request.on('row', (columns) => {
+        request.on('row', (columns: any[]) => {
           const row: { [columnName: string]: any } = {};
           columns.forEach(column => {
             row[column.metadata.colName] = column.value;
@@ -169,7 +169,7 @@ server.on('connection', async (connection: McpConnection) => {
   });
 });
 
-const port = process.env.PORT || 3000;
+const port: number | string = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`MCP server listening on port ${port}`);
 });

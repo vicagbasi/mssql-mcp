@@ -1,5 +1,9 @@
 # GEMINI.md
 
+## Technology Standards
+
+This project targets **Node.js v24** and should use the **latest stable versions of JavaScript and TypeScript**. All code, tools, and configurations must adhere to the most current standards, conventions, and idiomatic programming practices for these technologies. Ensure that language features, syntax, and patterns reflect the latest ECMAScript and TypeScript releases, and leverage modern best practices throughout the codebase.
+
 ## Project Objective
 
 Develop an MCP (Model Context Protocol) server in TypeScript that enables querying and exploration of Microsoft SQL Server databases.
@@ -54,7 +58,7 @@ To achieve the project objective, the MCP server will primarily be configured to
 ## Additional Notes
 
 - All tool responses must comply with MCP's JSON-RPC conventions.
-- Maintain clear, well-documented, and idiomatic TypeScript code.
+- Maintain clear, well-documented, and idiomatic TypeScript code, following the latest standards and conventions for Node.js v24, JavaScript, and TypeScript.
 - Prioritize extensibility and maintainability to support future enhancements.
 
 ---
@@ -63,4 +67,6 @@ To achieve the project objective, the MCP server will primarily be configured to
 
 ## Git Workflow
 
-For version control and progress tracking, the project should be initialized with Git and regularly checkpointed. When working on distinct features or fixes, utilize branches to isolate changes and maintain a clean history.
+For version control and progress tracking, the project should be initialized with Git and regularly checkpointed. Before starting any new Gemini session, ensure your current branch is clean: add and commit any open changes so that your working directory is free of uncommitted modifications. If your upcoming work is focused on a specific, enclosed feature, consider opening a new branch to keep those changes isolated. When working on distinct features or fixes, utilize branches to isolate changes and maintain a clean history.
+
+**Before starting any new Gemini session, always create and switch to a new clean branch based on the latest main branch. This ensures that each Gemini session begins with a clean working state and keeps session-specific changes isolated.**
