@@ -16,6 +16,72 @@ const connections = new Map<string, Connection>();
 // Get default connection string from environment
 const defaultConnectionString = process.env.MSSQL_CONNECTION_STRING;
 
+// Get Windows credentials from environment (supports multiple formats for flexibility)
+let windowsCredentials: { username?: string, password?: string, domain?: string } = {};
+try {
+  // New individual credential approach (cleanest - no JSON strings)
+  if (process.env.WINDOWS_USERNAME || process.env.WINDOWS_PASSWORD || process.env.WINDOWS_DOMAIN) {
+    if (process.env.WINDOWS_USERNAME) {
+      windowsCredentials.username = process.env.WINDOWS_USERNAME;
+    }
+    if (process.env.WINDOWS_PASSWORD) {
+      windowsCredentials.password = process.env.WINDOWS_PASSWORD;
+    }
+    if (process.env.WINDOWS_DOMAIN) {
+      windowsCredentials.domain = process.env.WINDOWS_DOMAIN;
+    }
+  }
+  // Fallback: windows_credentials (clean name, JSON string)
+  else if (process.env.windows_credentials) {
+    windowsCredentials = JSON.parse(process.env.windows_credentials);
+  }
+  // Fallback: MSSQL_WINDOWS_CREDENTIALS (longer prefixed name, JSON string)
+  else if (process.env.MSSQL_WINDOWS_CREDENTIALS) {
+    windowsCredentials = JSON.parse(process.env.MSSQL_WINDOWS_CREDENTIALS);
+  }
+  // Fallback: legacy individual environment variables
+  else {
+    if (process.env.MSSQL_USERNAME) {
+      windowsCredentials.username = process.env.MSSQL_USERNAME;
+    }
+    if (process.env.MSSQL_PASSWORD) {
+      windowsCredentials.password = process.env.MSSQL_PASSWORD;
+    }
+    if (process.env.MSSQL_DOMAIN) {
+      windowsCredentials.domain = process.env.MSSQL_DOMAIN;
+    }
+  }
+} catch (error) {
+  console.error('Error parsing Windows credentials:', error);
+}
+
+// Get named connections from environment (supports multiple formats for flexibility)
+let namedConnections: Record<string, string> = {};
+try {
+  // New individual connection approach (cleanest - find all CONNECTION_* variables)
+  const connectionVars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith('CONNECTION_') && typeof value === 'string') {
+      const connectionName = key.substring(11).toLowerCase(); // Remove 'CONNECTION_' prefix
+      connectionVars[connectionName] = value;
+    }
+  }
+  
+  if (Object.keys(connectionVars).length > 0) {
+    namedConnections = connectionVars;
+  }
+  // Fallback: connections (clean name, JSON string)
+  else if (process.env.connections) {
+    namedConnections = JSON.parse(process.env.connections);
+  }
+  // Fallback: MSSQL_CONNECTIONS (longer prefixed name, JSON string)
+  else if (process.env.MSSQL_CONNECTIONS) {
+    namedConnections = JSON.parse(process.env.MSSQL_CONNECTIONS);
+  }
+} catch (error) {
+  console.error('Error parsing named connections:', error);
+}
+
 // Helper function to parse connection string into tedious config
 function parseConnectionString(connectionString: string, envCredentials?: { username?: string, password?: string, domain?: string }): any {
   const config: any = {
@@ -89,17 +155,30 @@ function parseConnectionString(connectionString: string, envCredentials?: { user
   return config;
 }
 
-// Helper function to get connection string (use provided or default)
-function getConnectionString(providedConnectionString?: string): string {
-  const connectionString = providedConnectionString || defaultConnectionString;
-  if (!connectionString) {
-    throw new Error('No connection string provided and no default connection string configured');
+// Helper function to get connection string (use provided, named, or default)
+function getConnectionString(providedConnectionString?: string, connectionName?: string): string {
+  // Priority: explicit connectionString > named connection > default
+  if (providedConnectionString) {
+    return providedConnectionString;
   }
-  return connectionString;
+  
+  if (connectionName) {
+    const namedConnection = namedConnections[connectionName];
+    if (!namedConnection) {
+      throw new Error(`Named connection '${connectionName}' not found. Available connections: ${Object.keys(namedConnections).join(', ')}`);
+    }
+    return namedConnection;
+  }
+  
+  if (defaultConnectionString) {
+    return defaultConnectionString;
+  }
+  
+  throw new Error('No connection string provided and no default connection string configured');
 }
 // Helper function to get or create a connection
-async function getConnection(connectionString?: string): Promise<Connection> {
-  const actualConnectionString = getConnectionString(connectionString);
+async function getConnection(connectionString?: string, connectionName?: string): Promise<Connection> {
+  const actualConnectionString = getConnectionString(connectionString, connectionName);
   if (connections.has(actualConnectionString)) {
     const connection = connections.get(actualConnectionString)!;
     if (connection.state.name === 'LoggedIn') {
@@ -107,20 +186,8 @@ async function getConnection(connectionString?: string): Promise<Connection> {
     }
   }
 
-  // Get credentials from environment variables if available
-  const envCredentials: { username?: string, password?: string, domain?: string } = {};
-  
-  if (process.env.MSSQL_USERNAME) {
-    envCredentials.username = process.env.MSSQL_USERNAME;
-  }
-  if (process.env.MSSQL_PASSWORD) {
-    envCredentials.password = process.env.MSSQL_PASSWORD;
-  }
-  if (process.env.MSSQL_DOMAIN) {
-    envCredentials.domain = process.env.MSSQL_DOMAIN;
-  }
-
-  const config = parseConnectionString(actualConnectionString, envCredentials);
+  // Use the global windows credentials
+  const config = parseConnectionString(actualConnectionString, windowsCredentials);
   
   return new Promise((resolve, reject) => {
     const connection = new Connection(config);
@@ -209,6 +276,46 @@ const server = new McpServer({
   version: "1.0.0"
 });
 
+// Tool: List available connections
+server.registerTool(
+  "list_connections",
+  {
+    title: "List Available Connections",
+    description: "List all available named database connections configured in the server",
+    inputSchema: {}
+  },
+  async () => {
+    try {
+      const connectionList = Object.keys(namedConnections).map(name => ({
+        name,
+        connectionString: namedConnections[name]
+      }));
+      
+      const result = {
+        defaultConnection: defaultConnectionString ? "Available" : "Not configured",
+        namedConnections: connectionList,
+        totalConnections: connectionList.length
+      };
+      
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify(result, null, 2)
+        }]
+      };
+    } catch (error: unknown) {
+      const err = error as Error;
+      return {
+        content: [{
+          type: "text",
+          text: `Error listing connections: ${err.message}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
 // Tool: Test connection
 server.registerTool(
   "test_connection",
@@ -216,12 +323,13 @@ server.registerTool(
     title: "Test Connection",
     description: "Test the database connection and return basic server information",
     inputSchema: {
-      connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)")
+      connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
+      connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')")
     }
   },
-  async ({ connectionString }) => {
+  async ({ connectionString, connectionName }) => {
     try {
-      const connection = await getConnection(connectionString);
+      const connection = await getConnection(connectionString, connectionName);
       const result = await executeQuery(connection, "SELECT @@VERSION as version, @@SERVERNAME as server_name, DB_NAME() as database_name");
       
       return {
@@ -250,12 +358,13 @@ server.registerTool(
     title: "List Databases",
     description: "List all databases available on the SQL Server instance",
     inputSchema: {
-      connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)")
+      connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
+      connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')")
     }
   },
-  async ({ connectionString }) => {
+  async ({ connectionString, connectionName }) => {
     try {
-      const connection = await getConnection(connectionString);
+      const connection = await getConnection(connectionString, connectionName);
       const result = await executeQuery(connection, `
         SELECT name, database_id, create_date, collation_name
         FROM sys.databases 
@@ -290,12 +399,13 @@ server.registerTool(
     description: "List all tables in the connected database",
     inputSchema: {
       connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
+      connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
       schema: z.string().optional().describe("Schema name (default: dbo)")
     }
   },
-  async ({ connectionString, schema = "dbo" }) => {
+  async ({ connectionString, connectionName, schema = "dbo" }) => {
     try {
-      const connection = await getConnection(connectionString);
+      const connection = await getConnection(connectionString, connectionName);
       const result = await executeQuery(connection, `
         SELECT 
           t.TABLE_SCHEMA,
@@ -336,13 +446,14 @@ server.registerTool(
     description: "Get detailed schema information for a specific table including columns, data types, and constraints",
     inputSchema: {
       connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
+      connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
       tableName: z.string().describe("Name of the table to describe"),
       schema: z.string().optional().describe("Schema name (default: dbo)")
     }
   },
-  async ({ connectionString, tableName, schema = "dbo" }) => {
+  async ({ connectionString, connectionName, tableName, schema = "dbo" }) => {
     try {
-      const connection = await getConnection(connectionString);
+      const connection = await getConnection(connectionString, connectionName);
       
       // Get column information
       const columnsResult = await executeQuery(connection, `
@@ -422,15 +533,16 @@ server.registerTool(
     description: "Retrieve sample data from a table (top 10 rows by default)",
     inputSchema: {
       connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
+      connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
       tableName: z.string().describe("Name of the table to sample"),
       schema: z.string().optional().describe("Schema name (default: dbo)"),
       limit: z.number().optional().describe("Number of rows to return (default: 10, max: 100)")
     }
   },
-  async ({ connectionString, tableName, schema = "dbo", limit = 10 }) => {
+  async ({ connectionString, connectionName, tableName, schema = "dbo", limit = 10 }) => {
     try {
       const actualLimit = Math.min(limit, 100); // Cap at 100 for safety
-      const connection = await getConnection(connectionString);
+      const connection = await getConnection(connectionString, connectionName);
       
       const result = await executeQuery(connection, `SELECT TOP ${actualLimit} * FROM [${schema}].[${tableName}]`);
       
@@ -464,10 +576,11 @@ server.registerTool(
     description: "Execute a custom SQL SELECT query with automatic limit (top 20 rows)",
     inputSchema: {
       connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
+      connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
       query: z.string().describe("SQL SELECT query to execute")
     }
   },
-  async ({ connectionString, query }) => {
+  async ({ connectionString, connectionName, query }) => {
     try {
       // Validate query is read-only
       validateReadOnlyQuery(query);
@@ -475,7 +588,7 @@ server.registerTool(
       // Add limit to query
       const limitedQuery = addLimitToQuery(query, 20);
       
-      const connection = await getConnection(connectionString);
+      const connection = await getConnection(connectionString, connectionName);
       const result = await executeQuery(connection, limitedQuery);
       
       return {
@@ -509,12 +622,13 @@ server.registerTool(
     description: "Get foreign key relationships between tables in the database",
     inputSchema: {
       connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
+      connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
       schema: z.string().optional().describe("Schema name (default: dbo)")
     }
   },
-  async ({ connectionString, schema = "dbo" }) => {
+  async ({ connectionString, connectionName, schema = "dbo" }) => {
     try {
-      const connection = await getConnection(connectionString);
+      const connection = await getConnection(connectionString, connectionName);
       const result = await executeQuery(connection, `
         SELECT 
           fk.name AS CONSTRAINT_NAME,

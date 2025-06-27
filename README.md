@@ -4,34 +4,47 @@ A Model Context Protocol (MCP) server that provides secure access to Microsoft S
 
 Built using the [tedious](https://github.com/tediousjs/tedious) library for pure JavaScript SQL Server connectivity with support for Windows Authentication (NTLM).
 
-## 🚀 Quick Start
+## � Why Windows Credentials in Environment Variables?
+
+**NTLM Pass-Through Authentication Requirement:** When connecting to SQL Server using Windows Authentication (`Integrated Security=SSPI`), the MSSQL MCP server must provide explicit domain credentials because:
+
+1. **No Interactive Session**: MCP servers run as background processes without access to the current user's Windows session
+2. **NTLM Protocol**: Windows Authentication requires explicit username, password, and domain to establish the NTLM handshake
+3. **Security Context**: The tedious library needs these credentials to impersonate the domain user for database access
+4. **Cross-Process Authentication**: Unlike applications running in the user's context, MCP servers need explicit credential delegation
+
+**Environment variables are the secure, standard way to provide these credentials without hardcoding them in configuration files.**
+
+## �🚀 Quick Start
 
 1. **📦 Install**: `npm install && npm run build`
-2. **⚙️ Configure**: Update `.vscode/mcp.json` with your database credentials
-3. **🔗 Connect**: Tools automatically use the default connection from configuration
-4. **🔍 Explore**: Use natural language to query and explore your database
+2. **⚙️ Configure**: Set up individual environment variables (see configuration below)
+3. **🔗 Connect**: Tools automatically use your configured connections
+4. **🔍 Explore**: Use natural language to query and explore your databases conversationally
 
 ## 🛠️ Available Tools
 
-All tools accept an optional `connectionString` parameter. If not provided, they use the default connection from MCP configuration.
+All tools accept an optional `connectionName` parameter to switch between different databases conversationally.
 
 - **🔌 test_connection** - Test database connectivity and get server information
+- **📋 list_connections** - List all available named database connections
 - **📚 list_databases** - List all available databases on the SQL Server instance
-- **📋 list_tables** - List all tables in a specific schema (default: dbo)
-- **📊 describe_table** - Get detailed schema information including columns, data types, and constraints
+- **📊 list_tables** - List all tables in a specific schema (default: dbo)
+- **📝 describe_table** - Get detailed schema information including columns, data types, and constraints
 - **🎯 sample_data** - Retrieve sample data from a table (default: 10 rows, max: 100)
 - **💻 execute_query** - Execute custom SELECT queries (read-only, limited to 20 rows)
 - **🔗 get_relationships** - Get foreign key relationships between tables
 
 ## ✨ Features
 
-- **⚡ Default Connection Configuration**: Set up once in MCP config, use everywhere
+- **🎯 Individual Environment Variables**: Cleanest configuration approach - no JSON strings needed
+- **🔄 Multi-Database Support**: Switch between different databases conversationally
 - **🔐 Windows Authentication Support**: Full NTLM authentication with domain credentials
 - **🔍 Schema Discovery**: Comprehensive database exploration capabilities
 - **📊 Data Sampling**: Safe data retrieval with configurable limits
 - **🛡️ Read-Only Security**: Built-in query validation and safety restrictions
 - **🔄 Connection Pooling**: Efficient connection reuse using tedious
-- **🎛️ Flexible Usage**: Optional connection strings for multi-database scenarios
+- **🎛️ Multiple Config Formats**: Support for various configuration approaches
 
 ## 📦 Installation
 
@@ -42,9 +55,9 @@ npm run build
 
 ## ⚙️ Configuration
 
-### 🎯 MCP Configuration (Recommended)
+### 🎯 **Recommended Approach: Individual Environment Variables**
 
-Configure your default database connection in `.vscode/mcp.json`:
+The cleanest, most professional approach using individual environment variables (no JSON strings required):
 
 ```jsonc
 {
@@ -52,22 +65,85 @@ Configure your default database connection in `.vscode/mcp.json`:
         "mssql-mcp": {
             "type": "stdio",
             "command": "node",
-            "args": [
-                "C:\\path\\to\\mssql-mcp\\dist\\index.js"
-            ],
+            "args": ["C:\\path\\to\\mssql-mcp\\dist\\index.js"],
             "env": {
-                // Windows Authentication credentials for NTLM
-                "MSSQL_USERNAME": "your-domain-username",
-                "MSSQL_PASSWORD": "your-password",
-                "MSSQL_DOMAIN": "your-domain",
+                // Windows credentials (individual variables - cleanest)
+                "WINDOWS_USERNAME": "your-domain-username",
+                "WINDOWS_PASSWORD": "your-secure-password",
+                "WINDOWS_DOMAIN": "YOUR-DOMAIN",
                 
-                // Default connection string
-                "MSSQL_CONNECTION_STRING": "Data Source=ServerName; Initial Catalog=DatabaseName; Integrated Security=SSPI; TrustServerCertificate=True;"
+                // Optional default connection
+                "MSSQL_CONNECTION_STRING": "Data Source=main-server; Initial Catalog=MainDB; Integrated Security=SSPI; TrustServerCertificate=True;",
+                
+                // Multiple database connections (individual variables)
+                "CONNECTION_CRM": "Data Source=crm-server; Initial Catalog=CRM_Database; Integrated Security=SSPI; TrustServerCertificate=True;",
+                "CONNECTION_ERP": "Data Source=erp-server; Initial Catalog=ERP_System; Integrated Security=SSPI; TrustServerCertificate=True;",
+                "CONNECTION_ANALYTICS": "Data Source=analytics-server; Initial Catalog=DataWarehouse; Integrated Security=SSPI; TrustServerCertificate=True;",
+                "CONNECTION_HR": "Data Source=hr-server; Initial Catalog=HumanResources; Integrated Security=SSPI; TrustServerCertificate=True;"
             }
         }
     }
 }
 ```
+
+### 🎯 **Connection Name Mapping**
+
+When using `CONNECTION_*` variables, connection names are automatically generated:
+
+| Environment Variable | Connection Name (for tools) |
+|---------------------|------------------------------|
+| `CONNECTION_CRM` | `crm` |
+| `CONNECTION_ERP` | `erp` |
+| `CONNECTION_ANALYTICS` | `analytics` |
+| `CONNECTION_HR_SYSTEM` | `hr_system` |
+
+**Usage in conversational queries:**
+- *"Show me tables in the CRM database"* → uses `crm` connection
+- *"What's in the analytics warehouse?"* → uses `analytics` connection
+- *"Query the HR system for employee data"* → uses `hr_system` connection
+
+### 🔧 **Alternative Configuration Methods**
+
+<details>
+<summary>Click to see alternative configuration approaches (backward compatibility)</summary>
+
+#### **JSON String Variables**
+```jsonc
+{
+    "env": {
+        // Grouped Windows credentials (JSON string)
+        "windows_credentials": "{\"username\": \"your-domain-username\", \"password\": \"your-password\", \"domain\": \"your-domain\"}",
+        
+        // Multiple named connections (JSON string)
+        "connections": "{\"production\": \"Data Source=prod-server; Initial Catalog=ProdDB; Integrated Security=SSPI;\", \"development\": \"Data Source=dev-server; Initial Catalog=DevDB; Integrated Security=SSPI;\"}"
+    }
+}
+```
+
+#### **Legacy Variables**
+```jsonc
+{
+    "env": {
+        // Individual legacy variables
+        "MSSQL_USERNAME": "your-username",
+        "MSSQL_PASSWORD": "your-password", 
+        "MSSQL_DOMAIN": "your-domain"
+    }
+}
+```
+
+</details>
+
+### 📁 **Complete Configuration Examples**
+
+See the `examples/` folder for real-world configuration examples:
+- **`individual-variables-example.json`** ⭐ - **Recommended cleanest approach**
+- **`enterprise-config.json`** - Large enterprise with multiple systems
+- **`cleanest-config-example.json`** - Simple clean configuration
+
+For comprehensive multi-connection setup, see:
+- **`MULTI_CONNECTION_GUIDE.md`** - Detailed multi-connection guide
+- **`CONFIG_EVOLUTION_GUIDE.md`** - Comparison of all configuration approaches
 
 ### 🔗 Connection String Examples
 
@@ -91,180 +167,127 @@ Server=your-server.database.windows.net;Database=your-database;User Id=your-user
 Server=localhost\\SQLEXPRESS;Database=TestDB;Integrated Security=true;TrustServerCertificate=true;
 ```
 
-## 📖 Usage
+### 🎛️ Configuration Options
 
-### 🔄 Connection Hierarchy
+**🎯 Individual Variables (Recommended - Cleanest):**
+- **`WINDOWS_USERNAME`**: Windows domain username
+- **`WINDOWS_PASSWORD`**: Windows domain password  
+- **`WINDOWS_DOMAIN`**: Windows domain name
+- **`CONNECTION_*`**: Individual connection strings (e.g., `CONNECTION_CRM`, `CONNECTION_ANALYTICS`)
+- **`MSSQL_CONNECTION_STRING`**: Optional default connection string
 
-The server uses the following connection priority:
+**Connection Mapping**: `CONNECTION_CRM` → `crm`, `CONNECTION_HR_SYSTEM` → `hr_system`
 
-1. **🎯 Explicit connection string** (provided in tool call)
-2. **🌐 Default connection string** (from `MSSQL_CONNECTION_STRING` environment variable)
-3. **❌ Error** (if neither is available)
+**� Technical Note: Windows Authentication Requirements**
 
-### 🏃‍♂️ Basic Workflow
+The Windows credentials (`WINDOWS_USERNAME`, `WINDOWS_PASSWORD`, `WINDOWS_DOMAIN`) are **required** for Windows Authentication because:
 
-1. **🔌 Test Connection**
-   ```
-   Use test_connection() to verify your default configuration
-   ```
+1. **MCP Service Context**: The server runs as a background process without access to your Windows session
+2. **NTLM Authentication**: SQL Server Windows Authentication requires explicit credentials for the NTLM handshake  
+3. **Credential Delegation**: The tedious library must authenticate as your domain user to access SQL Server
+4. **Security Protocol**: This is how NTLM works for service-to-service authentication - credentials must be explicitly provided
 
-2. **🔍 Explore Database**
-   ```
-   Use list_databases() to see available databases
-   Use list_tables() to see tables in current database
-   ```
+**This isn't a configuration preference - it's a technical requirement of Windows Authentication in service contexts.**
 
-3. **📊 Understand Schema**
-   ```
-   Use describe_table(tableName: "Users") to get column details
-   Use get_relationships() to see foreign key relationships
-   ```
+**�🔄 Alternative Approaches (Backward Compatible):**
+- **JSON String Variables**: `windows_credentials`, `connections` 
+- **Legacy Variables**: `MSSQL_WINDOWS_CREDENTIALS`, `MSSQL_CONNECTIONS`
+- **Individual Legacy**: `MSSQL_USERNAME`, `MSSQL_PASSWORD`, `MSSQL_DOMAIN`
 
-4. **📋 Access Data**
-   ```
-   Use sample_data(tableName: "Orders") to preview data
-   Use execute_query(query: "SELECT * FROM Products WHERE Category = 'Electronics'")
-   ```
+**💡 Why Individual Variables?**
+- **🚀 Cleanest**: No JSON strings to escape or parse
+- **📋 Clearest**: Each setting immediately visible  
+- **🔧 Standard**: Industry-standard environment variable approach
+- **✅ Error-free**: No JSON syntax issues possible
+- **🔄 Compatible**: All existing configurations continue to work
 
-### 🚀 Advanced Usage
+## 💬 Conversational Usage
 
-**🔀 Multi-Database Access:**
+With multiple connections configured, you can switch between databases naturally in conversation:
+
 ```
-Use any tool with a specific connectionString parameter to access different databases
-```
+User: "What database connections do I have available?"
+Assistant: I'll list all your configured database connections...
+[Shows: crm, erp, analytics, hr, etc.]
 
-**🏢 Schema-Specific Operations:**
-```
-Use list_tables(schema: "HR") to list tables in the HR schema
-Use describe_table(tableName: "Employees", schema: "HR") for HR.Employees table
-```
+User: "Show me the customer tables in the CRM system"
+Assistant: I'll explore the CRM database for customer-related tables...
+[Uses connectionName: "crm"]
 
-## 🔐 Windows Authentication Setup
+User: "Now check the analytics warehouse for sales data"
+Assistant: Switching to the analytics database to look for sales data...
+[Uses connectionName: "analytics"]
 
-This server fully supports Windows Authentication through NTLM. Configure your domain credentials in the MCP configuration:
-
-### 📋 Required Environment Variables
-
-- `MSSQL_USERNAME` - Your domain username
-- `MSSQL_PASSWORD` - Your domain password  
-- `MSSQL_DOMAIN` - Your domain name
-- `MSSQL_CONNECTION_STRING` - Connection string with Integrated Security=SSPI
-
-### 🎉 Benefits of Windows Authentication
-
-- **🎫 Single Sign-On**: Use your Windows credentials
-- **🏢 Domain Security**: Leverage existing domain policies
-- **🚫 No SQL Logins**: Avoid managing separate SQL Server accounts
-- **📝 Audit Trail**: Actions tracked through Windows identity
-
-## 🛡️ Security Features
-
-- **👁️ Read-Only Access**: Only SELECT statements are permitted
-- **✅ Query Validation**: Blocks INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, etc.
-- **📏 Automatic Limits**: TOP clause inserted (20 rows for queries, 10 for samples)
-- **🔒 Connection Security**: Credentials stored in MCP configuration only
-- **🚨 Error Handling**: Detailed error messages for troubleshooting
-
-## 🔧 Integration Examples
-
-### 💻 VS Code with Copilot Chat
-
-```jsonc
-// In .vscode/mcp.json
-{
-    "servers": {
-        "mssql-mcp": {
-            "type": "stdio",
-            "command": "node",
-            "args": ["./dist/index.js"],
-            "env": {
-                "MSSQL_USERNAME": "user@domain.com",
-                "MSSQL_PASSWORD": "password",
-                "MSSQL_DOMAIN": "DOMAIN",
-                "MSSQL_CONNECTION_STRING": "Data Source=DevServer; Initial Catalog=AppDB; Integrated Security=SSPI; TrustServerCertificate=True;"
-            }
-        }
-    }
-}
+User: "Compare employee counts between HR system and ERP"
+Assistant: I'll check both databases for employee information...
+[Uses connectionName: "hr", then connectionName: "erp"]
 ```
 
-### 🤖 Claude Desktop
+## 🔒 Security Features
 
-```json
-{
-  "mcpServers": {
-    "mssql-mcp": {
-      "command": "node",
-      "args": ["/path/to/mssql-mcp/dist/index.js"],
-      "env": {
-        "MSSQL_CONNECTION_STRING": "your-connection-string"
-      }
-    }
-  }
-}
+- **Read-Only Access**: Only SELECT statements allowed
+- **Query Validation**: Automatic blocking of dangerous operations
+- **Result Limiting**: Automatic TOP clauses to prevent large data dumps
+- **Connection Validation**: Secure credential handling
+- **Schema-Level Security**: Respects database permissions
+
+## 🚀 Usage Examples
+
+### Basic Database Exploration
+```
+User: "What tables are in my database?"
+Assistant: [Lists all tables with descriptions]
+
+User: "Describe the customers table"
+Assistant: [Shows column details, data types, constraints]
+
+User: "Show me a sample of customer data"
+Assistant: [Returns first 10 rows safely]
 ```
 
-## 👨‍💻 Development
+### Multi-Database Scenarios
+```
+User: "List my available connections"
+Assistant: [Shows all configured database connections]
+
+User: "Switch to the analytics database and show me the sales tables"
+Assistant: [Connects to analytics DB and lists sales-related tables]
+
+User: "Query both CRM and ERP systems for customer overlap"
+Assistant: [Queries both systems and compares results]
+```
+
+## 🛡️ Best Practices
+
+- **Use Windows Authentication** when possible for better security
+- **Configure read-only database users** for additional safety
+- **Use descriptive connection names** (e.g., `CONNECTION_SALES_CRM` vs `CONNECTION_DB1`)
+- **Test connections** before deploying to production
+- **Monitor query performance** and adjust limits as needed
+
+## 🔧 Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Build TypeScript
-npm run build
-
 # Development mode
 npm run dev
 
-# Test connection (requires configuration)
+# Build for production
+npm run build
+
+# Run tests
 npm test
 ```
 
-## 🚨 Troubleshooting
+## 📝 License
 
-### ⚠️ Common Issues
-
-**❌ "No connection string provided"**
-- Ensure `MSSQL_CONNECTION_STRING` is set in your MCP configuration
-- Verify the environment variables are properly configured
-
-**🔑 "Login failed for user ''"**
-- Check Windows Authentication credentials in MCP config
-- Verify domain, username, and password are correct
-- Ensure SQL Server allows Windows Authentication
-
-**🌐 "Server not found"**
-- Verify server name in connection string
-- Check network connectivity to SQL Server
-- Confirm SQL Server is running and accessible
-
-### 🔍 Debugging
-
-Enable detailed logging by checking MCP server output and SQL Server error logs.
-
-## 📋 Requirements
-
-- **⚙️ Node.js**: Version 18 or higher
-- **🗄️ Microsoft SQL Server**: (2008 or later)
-- **🔐 Valid SQL Server connection credentials**
-- **🌐 Network access** to SQL Server instance
-
-## 📄 License
-
-MIT License
+MIT License - see LICENSE file for details.
 
 ## 🤝 Contributing
 
-1. 🍴 Fork the repository
-2. 🌿 Create a feature branch
-3. ✏️ Make your changes
-4. 🧪 Add tests if applicable
-5. 📤 Submit a pull request
+Contributions welcome! Please read CONTRIBUTING.md for guidelines.
 
-## 🆘 Support
+## 📚 Additional Resources
 
-For issues and questions:
-- 🔍 Check the troubleshooting section
-- 📖 Review SQL Server connectivity requirements
-- ⚙️ Verify MCP configuration format
-- 🐛 Submit issues via GitHub repository
+- [Model Context Protocol Documentation](https://modelcontextprotocol.io/)
+- [Tedious SQL Server Driver](https://github.com/tediousjs/tedious)
+- [Microsoft SQL Server Documentation](https://docs.microsoft.com/en-us/sql/)

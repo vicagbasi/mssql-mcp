@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "mssql-mcp": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\YourUsername\\source\\repos\\mssql-mcp\\dist\\index.js"
+      ],
+      "env": {
+        "_comment": "Alternative JSON string approach for backward compatibility",
+        "windows_credentials": "{\"username\": \"john.doe\", \"password\": \"SecurePassword123!\", \"domain\": \"CORP\"}",
+        
+        "MSSQL_CONNECTION_STRING": "Data Source=main-server.corp.com; Initial Catalog=MainApp; Integrated Security=SSPI; TrustServerCertificate=True;",
+        
+        "connections": "{\"production\": \"Data Source=prod-server.corp.com; Initial Catalog=ProdDB; Integrated Security=SSPI; TrustServerCertificate=True;\", \"development\": \"Data Source=dev-server.corp.com; Initial Catalog=DevDB; Integrated Security=SSPI; TrustServerCertificate=True;\", \"analytics\": \"Data Source=analytics.corp.com; Initial Catalog=DataWarehouse; Integrated Security=SSPI; TrustServerCertificate=True;\", \"azure_backup\": \"Server=backup.database.windows.net; Database=BackupDB; User Id=backup_admin; Password=BackupSecure123!; Encrypt=true;\"}"
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "mssql-mcp": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\YourUsername\\source\\repos\\mssql-mcp\\dist\\index.js"
+      ],
+      "env": {
+        "_comment_credentials": "Simple individual credential variables",
+        "WINDOWS_USERNAME": "myuser",
+        "WINDOWS_PASSWORD": "mypassword", 
+        "WINDOWS_DOMAIN": "MYDOMAIN",
+        
+        "_comment_default": "Optional default connection",
+        "MSSQL_CONNECTION_STRING": "Data Source=main-server.company.com; Initial Catalog=MainDB; Integrated Security=SSPI; TrustServerCertificate=True;",
+        
+        "_comment_connections": "Clean individual connection variables",
+        "CONNECTION_CRM": "Data Source=crm-server.company.com; Initial Catalog=CRM; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_ERP": "Data Source=erp-server.company.com; Initial Catalog=ERP; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_ANALYTICS": "Data Source=analytics.company.com; Initial Catalog=DataWarehouse; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_AZURE_PROD": "Server=prod.database.windows.net; Database=Production; User Id=admin; Password=AzurePass123!; Encrypt=true;",
+        "CONNECTION_LEGACY_SYSTEM": "Data Source=legacy\\\\SQLEXPRESS; Initial Catalog=LegacyDB; Integrated Security=SSPI; TrustServerCertificate=True;"
+      }
+    }
+  }
+}

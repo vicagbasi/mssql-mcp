@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "mssql-mcp": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\YourUsername\\source\\repos\\mssql-mcp\\dist\\index.js"
+      ],
+      "env": {
+        
+        "_comment_credentials": "Individual credential variables (cleanest approach - no JSON strings)",
+
+        "WINDOWS_USERNAME": "enterprise-user",
+        "WINDOWS_PASSWORD": "enterprise-secure-password", 
+        "WINDOWS_DOMAIN": "ENTERPRISE",
+        
+        "_comment_default": "Optional default connection",
+
+        "MSSQL_CONNECTION_STRING": "Data Source=main-db.enterprise.com; Initial Catalog=CorporateDB; Integrated Security=SSPI; TrustServerCertificate=True;",
+        
+        "_comment_connections": "Individual connection variables (cleanest approach - no JSON strings)",
+
+        "CONNECTION_CORPORATE_MAIN": "Data Source=main-db.enterprise.com; Initial Catalog=CorporateDB; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_HR_SYSTEM": "Data Source=hr-db.enterprise.com; Initial Catalog=HumanResources; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_FINANCE_ERP": "Data Source=finance-db.enterprise.com; Initial Catalog=FinanceERP; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_SALES_CRM": "Data Source=sales-db.enterprise.com; Initial Catalog=SalesCRM; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_INVENTORY_WMS": "Data Source=warehouse-db.enterprise.com; Initial Catalog=WarehouseManagement; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_CUSTOMER_PORTAL": "Data Source=portal-db.enterprise.com; Initial Catalog=CustomerPortal; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_ANALYTICS_DW": "Data Source=analytics-db.enterprise.com; Initial Catalog=DataWarehouse; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_COMPLIANCE_AUDIT": "Data Source=audit-db.enterprise.com; Initial Catalog=ComplianceAudit; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_LEGACY_MAINFRAME": "Data Source=mainframe-bridge.enterprise.com\\\\SQLEXPRESS; Initial Catalog=MainframeBridge; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_BACKUP_DR": "Data Source=dr-site.enterprise.com; Initial Catalog=DisasterRecovery; Integrated Security=SSPI; TrustServerCertificate=True;"
+      }
+    }
+  }
+}
