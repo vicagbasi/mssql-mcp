@@ -145,6 +145,92 @@ For comprehensive multi-connection setup, see:
 - **`MULTI_CONNECTION_GUIDE.md`** - Detailed multi-connection guide
 - **`CONFIG_EVOLUTION_GUIDE.md`** - Comparison of all configuration approaches
 
+## 📍 **MCP Configuration File Locations**
+
+Different MCP clients expect configuration files in specific locations. Here's where to place your MSSQL MCP server configuration:
+
+### 🖥️ **Claude Desktop**
+
+#### **Global/User Level** (Recommended for personal development)
+- **Location**: `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/claude/claude_desktop_config.json`
+- **Scope**: Available in ALL Claude Desktop conversations
+- **Use Case**: Personal development setup, local databases
+
+**Note**: Claude Desktop only supports global configuration (no project-level config)
+
+### 📝 **VS Code**
+
+#### **Global/User Level** (Available in all workspaces)
+- **Location**: User Settings JSON
+  - **Windows**: `%APPDATA%\Code\User\settings.json`
+  - **macOS**: `~/Library/Application Support/Code/User/settings.json`
+  - **Linux**: `~/.config/Code/User/settings.json`
+- **Access**: `Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"
+- **Scope**: ALL VS Code workspaces
+- **Use Case**: Consistent development environment across all projects
+
+#### **Workspace Level** (Specific workspace)
+- **Location**: `.vscode/settings.json` in workspace root
+- **Scope**: Specific workspace only
+- **Use Case**: Workspace-specific database connections
+
+#### **Project/Repository Level** (Recommended for teams)
+- **Location**: `.vscode/mcp.json` in project root
+- **Scope**: Specific project/repository only
+- **Use Case**: Project-specific databases, team collaboration, version control
+
+### 🎯 **Cursor**
+
+#### **Global/User Level**
+- **Location**: `%APPDATA%\Cursor\User\settings.json` (Windows)
+- **macOS**: `~/Library/Application Support/Cursor/User/settings.json`
+- **Linux**: `~/.config/Cursor/User/settings.json`
+- **Scope**: ALL Cursor workspaces
+
+#### **Workspace/Project Level**
+- **Location**: `.vscode/settings.json` or `.vscode/mcp.json` in project root
+- **Scope**: Specific workspace/project (Cursor uses VS Code format)
+
+### 🏢 **Visual Studio Professional**
+
+#### **System Level**
+- **Location**: Windows System Environment Variables
+- **Use Case**: System-wide credentials and connections
+- **Note**: VS Professional doesn't have native MCP support yet
+
+#### **Project Level**
+- **Location**: `.vs/mcp.json` or similar (extension-dependent)
+- **Status**: Depends on MCP extension implementation
+
+### 🎯 **Configuration Priority Hierarchy**
+
+**Override Order** (highest to lowest priority):
+1. **Project/Repository Level**: `.vscode/mcp.json`
+2. **Workspace Level**: `.vscode/settings.json`
+3. **User/Global Level**: `User/settings.json` or Claude config
+4. **System Level**: Windows Environment Variables
+
+**Example**: If you have `WINDOWS_USERNAME` set both globally and in a project config, the project value will be used for that specific project.
+
+### 💡 **Best Practices for File Locations**
+
+#### **For Individual Developers:**
+- **Global credentials**: Set Windows authentication in system environment variables
+- **Global default connection**: Configure in Claude Desktop global config or VS Code user settings
+- **Project connections**: Use `.vscode/mcp.json` for project-specific databases
+
+#### **For Teams:**
+- **Shared setup**: Document configuration in project README
+- **Version control**: Include `.vscode/mcp.json` in repository for team consistency
+- **Security**: Never commit actual passwords - use environment variable references
+
+#### **For Different Use Cases:**
+- **Personal projects**: Global configuration in Claude Desktop or VS Code user settings
+- **Team projects**: Project-level `.vscode/mcp.json` with environment variable references
+- **Enterprise**: Combination of system environment variables + project-specific configs
+
 ### 🔗 Connection String Examples
 
 **🔐 Windows Authentication (Recommended):**
