@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * MSSQL MCP Server - Modular Entry Point
  * 

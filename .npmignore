@@ -1,0 +1,29 @@
+# Source files (only dist/ should be published)
+src/
+tsconfig.json
+
+# Development and testing
+tests/
+.env
+.env.*
+*.test.js
+*.test.ts
+
+# Development tools
+.vscode/
+.github/
+.git/
+
+# Build artifacts
+*.tsbuildinfo
+
+# Logs and temporary files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
