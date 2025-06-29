@@ -1,10 +1,10 @@
-# 🗄️ Enhanced MSSQL MCP Server
+# 🗄️ MSSQL MCP Server
 
 A comprehensive Model Context Protocol (MCP) server for Microsoft SQL Server database analysis and modernizatFor complete configuration details, file locations, and troubleshooting, see the [**Configuration Guide**](CONFIGURATION_GUIDE.md).
 
 ## 💬 Conversational Usage
 
-With multiple connections configured, you can switch between databases naturally:This enhanced server provides extensive tools for analyzing Classic ASP applications, exploring database schemas, and planning modernization to .NET/Angular architectures.
+With multiple connections configured, you can switch between databases naturally:This comprehensive server provides extensive tools for analyzing Classic ASP applications, exploring database schemas, and planning modernization to .NET/Angular architectures.
 
 Built using the [tedious](https://github.com/tediousjs/tedious) library for pure JavaScript SQL Server connectivity with support for Windows Authentication (NTLM).
 

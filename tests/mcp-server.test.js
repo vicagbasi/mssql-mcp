@@ -68,7 +68,7 @@ async function runQuickTest() {
                 if (response.id === 1) {
                     console.log(`✅ Found ${response.result.tools.length} tools available`);
                     console.log('   Core tools:', response.result.tools.slice(0, 8).map(t => t.name).join(', '));
-                    console.log('   Enhanced tools:', response.result.tools.slice(8).length, 'additional tools');
+                    console.log('   Additional tools:', response.result.tools.slice(8).length, 'additional tools');
                 }
                 if (response.id === 2) {
                     if (response.error) {

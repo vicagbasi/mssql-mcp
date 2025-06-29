@@ -2,7 +2,7 @@
 
 ## 📊 Overview
 - **Original Version**: 8 core tools
-- **Enhanced Version**: 29 comprehensive tools
+- **Current Version**: 29 comprehensive tools
 - **Improvement**: 263% more capabilities
 - **Focus**: Classic ASP to .NET/Angular modernization
 
@@ -208,4 +208,4 @@ await mcp.call("detect_audit_columns", { schema: "MyApp" });
 - **Security**: Read-only, validated queries
 - **Performance**: Optimized for large databases
 
-This enhanced MCP server provides everything needed to analyze and modernize Classic ASP applications with confidence and completeness.
+This comprehensive MCP server provides everything needed to analyze and modernize Classic ASP applications with confidence and completeness.

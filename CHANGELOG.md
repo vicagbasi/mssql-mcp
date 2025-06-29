@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multi-database connection support with named connections
 - Individual environment variable configuration approach
 - Classic ASP modernization workflow tools
-- Enhanced schema discovery tools (stored procedures, views, triggers)
+- Schema discovery tools (stored procedures, views, triggers)
 - Performance analysis tools (index analysis, missing indexes)
 - Data pattern analysis tools (lookup tables, audit columns)
 - Constraint analysis tools (check constraints, computed columns)
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modernized configuration approach with individual variables
 - Consolidated test files into `tests/` directory
 - Improved documentation structure
-- Enhanced error handling and validation
+- Improved error handling and validation
 
 ### Security
 - Added `.env` file for secure credential management (development only)
