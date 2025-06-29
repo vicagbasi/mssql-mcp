@@ -26,6 +26,9 @@ This folder contains real-world configuration examples showcasing different appr
 
 ## 📁 Available Examples
 
+### `simple-sql-auth.json`
+Minimal configuration for SQL Server Authentication (no Windows Auth required).
+
 ### `simple-config.json`
 Basic configuration with essential connections using individual variables.
 

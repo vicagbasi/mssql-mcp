@@ -1,6 +1,10 @@
-# 🗄️ MSSQL MCP Server
+# 🗄️ Enhanced MSSQL MCP Server
 
-A Model Context Protocol (MCP) server that provides secure access to Microsoft SQL Server databases. This server enables LLM applications to explore database schemas and execute read-only queries through standardized MCP tools.
+A comprehensive Model Context Protocol (MCP) server for Microsoft SQL Server database analysis and modernizatFor complete configuration details, file locations, and troubleshooting, see the [**Configuration Guide**](CONFIGURATION_GUIDE.md).
+
+## 💬 Conversational Usage
+
+With multiple connections configured, you can switch between databases naturally:This enhanced server provides extensive tools for analyzing Classic ASP applications, exploring database schemas, and planning modernization to .NET/Angular architectures.
 
 Built using the [tedious](https://github.com/tediousjs/tedious) library for pure JavaScript SQL Server connectivity with support for Windows Authentication (NTLM).
 
@@ -22,10 +26,9 @@ Built using the [tedious](https://github.com/tediousjs/tedious) library for pure
 3. **🔗 Connect**: Tools automatically use your configured connections
 4. **🔍 Explore**: Use natural language to query and explore your databases conversationally
 
-## 🛠️ Available Tools
+## 🛠️ Available Tools (28 Comprehensive Database Analysis Tools)
 
-All tools accept an optional `connectionName` parameter to switch between different databases conversationally.
-
+### 🔧 Core Database Tools (8 tools)
 - **🔌 test_connection** - Test database connectivity and get server information
 - **📋 list_connections** - List all available named database connections
 - **📚 list_databases** - List all available databases on the SQL Server instance
@@ -35,12 +38,46 @@ All tools accept an optional `connectionName` parameter to switch between differ
 - **💻 execute_query** - Execute custom SELECT queries (read-only, limited to 20 rows)
 - **🔗 get_relationships** - Get foreign key relationships between tables
 
+### 🏗️ Schema Discovery Tools (6 tools)
+- **📋 list_stored_procedures** - List and analyze stored procedures with parameters and definitions
+- **🔍 describe_stored_procedure** - Get procedure parameters and definition
+- **📋 list_views** - Analyze views, their definitions, and dependencies
+- **🔍 describe_view** - Get view definition and dependencies
+- **⚡ list_triggers** - Identify triggers and their business logic
+- **🔍 describe_trigger** - Extract trigger logic and events
+
+### ⚡ Index & Performance Tools (5 tools)
+- **📊 list_indexes** - Comprehensive index usage statistics and recommendations
+- **🎯 find_missing_indexes** - Identify potentially missing indexes based on query patterns
+- **📈 analyze_table_stats** - Analyze table sizes, row counts, and space usage
+- **💾 analyze_database_size** - Complete database storage analysis
+- **🔍 analyze_index_usage** - Identify unused and underutilized indexes
+
+### 🔒 Constraint Analysis Tools (5 tools)
+- **📋 list_constraints** - List all constraints (check, unique, foreign key, etc.)
+- **✅ analyze_check_constraints** - Extract business rules from check constraints
+- **🔧 list_default_constraints** - Analyze default value patterns
+- **📝 list_user_defined_types** - Catalog custom data types
+- **🧮 find_computed_columns** - Identify calculated fields and business logic
+
+### 📊 Data Pattern Tools (4 tools)
+- **📈 analyze_data_distribution** - Analyze data patterns and quality
+- **🔍 find_lookup_tables** - Automatically identify reference/lookup tables
+- **❓ analyze_null_patterns** - Find columns with high null percentages
+- **🔍 detect_audit_columns** - Identify audit columns and tracking patterns
+
+All tools accept an optional `connectionName` parameter to switch between different databases conversationally.
+
 ## ✨ Features
 
 - **🎯 Individual Environment Variables**: Cleanest configuration approach - no JSON strings needed
 - **🔄 Multi-Database Support**: Switch between different databases conversationally
 - **🔐 Windows Authentication Support**: Full NTLM authentication with domain credentials
-- **🔍 Schema Discovery**: Comprehensive database exploration capabilities
+- **🏗️ Deep Schema Analysis**: Comprehensive database object exploration including stored procedures, views, triggers
+- **⚡ Performance Tools**: Index analysis, missing index detection, table statistics
+- **🔒 Business Logic Extraction**: Extract business rules from constraints, computed columns, and database objects
+- **📊 Data Pattern Analysis**: Identify lookup tables, audit columns, and data quality patterns
+- **🔍 Legacy System Analysis**: Specialized tools for Classic ASP to modern stack migration planning
 - **📊 Data Sampling**: Safe data retrieval with configurable limits
 - **🛡️ Read-Only Security**: Built-in query validation and safety restrictions
 - **🔄 Connection Pooling**: Efficient connection reuse using tedious
@@ -52,6 +89,28 @@ All tools accept an optional `connectionName` parameter to switch between differ
 npm install
 npm run build
 ```
+
+## 🔐 Environment Setup
+
+**Note:** The `.env` file is for local testing/development only. For production use, configure your MCP client directly with environment variables.
+
+1. **Copy the example environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Update `.env` with your credentials:**
+   ```bash
+   # Windows Authentication credentials for NTLM
+   MSSQL_USERNAME=your-domain-username
+   MSSQL_PASSWORD=your-secure-password
+   MSSQL_DOMAIN=your-domain
+   
+   # Default connection string for your database
+   MSSQL_CONNECTION_STRING=Data Source=your-server; Initial Catalog=your-database; Integrated Security=SSPI; TrustServerCertificate=True;
+   ```
+
+3. **Security Note:** The `.env` file is automatically ignored by Git to prevent committing credentials.
 
 ## ⚙️ Configuration
 
@@ -104,52 +163,14 @@ When using `CONNECTION_*` variables, connection names are automatically generate
 
 ### 🔧 **Alternative Configuration Methods**
 
-<details>
-<summary>Click to see alternative configuration approaches (backward compatibility)</summary>
+The server supports multiple configuration approaches for backward compatibility:
+- **JSON String Variables**: `windows_credentials`, `connections` 
+- **Legacy Variables**: `MSSQL_WINDOWS_CREDENTIALS`, `MSSQL_CONNECTIONS`
+- **Individual Legacy**: `MSSQL_USERNAME`, `MSSQL_PASSWORD`, `MSSQL_DOMAIN`
 
-#### **JSON String Variables**
-```jsonc
-{
-    "env": {
-        // Grouped Windows credentials (JSON string)
-        "windows_credentials": "{\"username\": \"your-domain-username\", \"password\": \"your-password\", \"domain\": \"your-domain\"}",
-        
-        // Multiple named connections (JSON string)
-        "connections": "{\"production\": \"Data Source=prod-server; Initial Catalog=ProdDB; Integrated Security=SSPI;\", \"development\": \"Data Source=dev-server; Initial Catalog=DevDB; Integrated Security=SSPI;\"}"
-    }
-}
-```
+For complete configuration details, file locations, and troubleshooting, see the [**Configuration Guide**](CONFIGURATION_GUIDE.md).
 
-#### **Legacy Variables**
-```jsonc
-{
-    "env": {
-        // Individual legacy variables
-        "MSSQL_USERNAME": "your-username",
-        "MSSQL_PASSWORD": "your-password", 
-        "MSSQL_DOMAIN": "your-domain"
-    }
-}
-```
-
-</details>
-
-### 📁 **Complete Configuration Examples**
-
-See the `examples/` folder for real-world configuration examples:
-- **`individual-variables-example.json`** ⭐ - **Recommended cleanest approach**
-- **`enterprise-config.json`** - Large enterprise with multiple systems
-- **`cleanest-config-example.json`** - Simple clean configuration
-
-For comprehensive multi-connection setup, see:
-- **`MULTI_CONNECTION_GUIDE.md`** - Detailed multi-connection guide
-- **`CONFIG_EVOLUTION_GUIDE.md`** - Comparison of all configuration approaches
-
-## 📍 **MCP Configuration File Locations**
-
-Different MCP clients expect configuration files in specific locations. Here's where to place your MSSQL MCP server configuration:
-
-### 🖥️ **Claude Desktop**
+## � Security Features
 
 #### **Global/User Level** (Recommended for personal development)
 - **Location**: `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
@@ -343,13 +364,113 @@ User: "Query both CRM and ERP systems for customer overlap"
 Assistant: [Queries both systems and compares results]
 ```
 
-## 🛡️ Best Practices
+## 🏗️ Classic ASP Modernization Workflow
 
-- **Use Windows Authentication** when possible for better security
-- **Configure read-only database users** for additional safety
-- **Use descriptive connection names** (e.g., `CONNECTION_SALES_CRM` vs `CONNECTION_DB1`)
-- **Test connections** before deploying to production
-- **Monitor query performance** and adjust limits as needed
+This MCP server provides specialized tools for analyzing Classic ASP applications and planning modernization:
+
+### Phase 1: Discovery & Assessment
+```javascript
+// 1. Analyze stored procedures containing business logic
+await mcp.call("list_stored_procedures", {
+  schema: "MyApp",
+  includeSystemObjects: false
+});
+
+// 2. Extract business rules from database constraints
+await mcp.call("analyze_check_constraints", {
+  schema: "MyApp"
+});
+
+// 3. Identify lookup tables and reference data
+await mcp.call("find_lookup_tables", {
+  schema: "MyApp"
+});
+
+// 4. Analyze performance bottlenecks
+await mcp.call("find_missing_indexes", {
+  schema: "MyApp"
+});
+```
+
+### Phase 2: Business Logic Extraction
+```javascript
+// Extract detailed stored procedure logic
+await mcp.call("describe_stored_procedure", {
+  procedureName: "CalculateOrderTotal",
+  schema: "MyApp",
+  includeDefinition: true
+});
+
+// Find computed columns with business rules
+await mcp.call("find_computed_columns", {
+  schema: "MyApp"
+});
+
+// Analyze data validation rules
+await mcp.call("analyze_check_constraints", {
+  schema: "MyApp"
+});
+```
+
+### Phase 3: Migration Planning
+```javascript
+// Identify audit trails and tracking patterns
+await mcp.call("detect_audit_columns", {
+  schema: "MyApp"
+});
+
+// Analyze data patterns for normalization
+await mcp.call("analyze_data_distribution", {
+  tableName: "Orders",
+  schema: "MyApp"
+});
+
+// Plan index strategy for new application
+await mcp.call("analyze_index_usage", {
+  schema: "MyApp"
+});
+```
+
+## 💬 Advanced Usage Examples
+
+### Schema Discovery
+```
+User: "I need to understand the business logic in my legacy application database"
+Assistant: I'll analyze your database for business logic patterns...
+
+[Uses list_stored_procedures, analyze_check_constraints, find_computed_columns]
+
+User: "What stored procedures handle order processing?"
+Assistant: Let me search for order-related procedures...
+
+[Uses list_stored_procedures with filtering, then describe_stored_procedure for detailed analysis]
+```
+
+### Performance Analysis
+```
+User: "Find performance issues in my database"
+Assistant: I'll analyze indexes and table performance...
+
+[Uses find_missing_indexes, analyze_table_stats, analyze_index_usage]
+
+User: "Which tables are growing too fast?"
+Assistant: Let me check table sizes and growth patterns...
+
+[Uses analyze_table_stats, analyze_database_size]
+```
+
+### Multi-Database Analysis
+```
+User: "Compare customer data between our CRM and ERP systems"
+Assistant: I'll analyze customer tables in both systems...
+
+[Switches between connectionName: "crm" and connectionName: "erp"]
+
+User: "Find data quality issues across all our databases"
+Assistant: Let me check data patterns across your systems...
+
+[Uses analyze_null_patterns, analyze_data_distribution across multiple connections]
+```
 
 ## 🔧 Development
 

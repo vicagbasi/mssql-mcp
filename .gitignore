@@ -2,6 +2,13 @@
 node_modules/
 dist/
 
+# Environment variables with credentials
+.env
+.env.test
+.env.production
+.env.local
+.env.*.local
+
 # Logs
 logs
 *.log
@@ -31,13 +38,6 @@ coverage
 
 # Bower dependency directory (https://bower.io/)
 bower_components
-
-# Environment variable files
-.env
-.env.test
-.env.production
-.env.local
-.env.*.local
 
 # Next.js build output
 .next

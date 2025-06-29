@@ -2,9 +2,7 @@
   "mcpServers": {
     "mssql-mcp": {
       "command": "node",
-      "args": [
-        "C:\\Users\\YourUsername\\source\\repos\\mssql-mcp\\dist\\index.js"
-      ],
+      "args": ["C:\\path\\to\\mssql-mcp\\dist\\index.js"],
       "env": {
         
         "_comment_credentials": "Individual credential variables (cleanest approach - no JSON strings)",
