@@ -187,7 +187,23 @@ class MCPTester {
     }
     async runToolTests() {
         console.log('🧪 Running Core Tool Tests:\n');
-        await this.testTool('tools/list', {}, 'List Tools');
+        
+        // Test tools/list method directly (not as a tool)
+        try {
+            console.log('  Testing: List Tools...');
+            const response = await this.sendRequest('tools/list', {});
+            if (response.error) {
+                console.log(`    ❌ Error: ${response.error.message}`);
+                this.testResults.push({ tool: 'List Tools', status: 'error', error: response.error.message });
+            } else {
+                console.log(`    ✅ Success`);
+                this.testResults.push({ tool: 'List Tools', status: 'success', response: response.result });
+            }
+        } catch (error) {
+            console.log(`    ❌ Failed: ${error.message}`);
+            this.testResults.push({ tool: 'List Tools', status: 'failed', error: error.message });
+        }
+        
         await this.testTool('test_connection', {}, 'Test Connection');
         await this.testTool('list_databases', {}, 'List Databases');
         await this.testTool('list_tables', { schema: 'dbo' }, 'List Tables (dbo schema)');
