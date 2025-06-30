@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "mssql-mcp": {
-      "command": "node",
-      "args": ["C:\\path\\to\\mssql-mcp\\dist\\index.js"],
+      "command": "npx",
+      "args": ["mssql-mcp-server"],
       "env": {
         "MSSQL_CONNECTION_STRING": "Data Source=your-sql-server; Initial Catalog=your-db; User Id=your-sql-username; Password=your-sql-password; TrustServerCertificate=True;"
       }

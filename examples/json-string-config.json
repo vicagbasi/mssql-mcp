@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "mssql-mcp": {
-      "command": "node",
-      "args": ["C:\\path\\to\\mssql-mcp\\dist\\index.js"],
+      "command": "npx",
+      "args": ["mssql-mcp-server"],
       "env": {
         "_comment": "Alternative JSON string approach for backward compatibility",
         "windows_credentials": "{\"username\": \"john.doe\", \"password\": \"SecurePassword123!\", \"domain\": \"CORP\"}",

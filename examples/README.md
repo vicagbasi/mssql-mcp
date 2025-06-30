@@ -18,6 +18,25 @@ This folder contains real-world configuration examples showcasing different appr
 ### `individual-variables-example.json` ⭐
 **The cleanest, most professional approach** using individual environment variables.
 
+**Example:**
+```json
+{
+  "mcpServers": {
+    "mssql-mcp": {
+      "command": "npx",
+      "args": ["mssql-mcp-server"],
+      "env": {
+        "WINDOWS_USERNAME": "myuser",
+        "WINDOWS_PASSWORD": "mypassword",
+        "WINDOWS_DOMAIN": "MYDOMAIN",
+        "CONNECTION_CRM": "Data Source=crm-server; Initial Catalog=CRM; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_ERP": "Data Source=erp-server; Initial Catalog=ERP; Integrated Security=SSPI; TrustServerCertificate=True;"
+      }
+    }
+  }
+}
+```
+
 **Benefits:**
 - No JSON strings to escape
 - Each setting is clearly visible

@@ -114,7 +114,7 @@ npm run build
 
 ## ⚙️ Configuration
 
-### 🎯 **Recommended Approach: Individual Environment Variables**
+### 🎯 Recommended Approach: Individual Environment Variables
 
 The cleanest, most professional approach using individual environment variables (no JSON strings required):
 
@@ -123,8 +123,8 @@ The cleanest, most professional approach using individual environment variables 
     "servers": {
         "mssql-mcp": {
             "type": "stdio",
-            "command": "node",
-            "args": ["C:\\path\\to\\mssql-mcp\\dist\\index.js"],
+            "command": "npx",
+            "args": ["mssql-mcp-server"],
             "env": {
                 // Windows credentials (individual variables - cleanest)
                 "WINDOWS_USERNAME": "your-domain-username",
