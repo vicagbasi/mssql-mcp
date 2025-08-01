@@ -14,6 +14,7 @@ import { registerSchemaDiscoveryTools } from "./tools/schema.js";
 import { registerIndexAndPerformanceTools } from "./tools/performance.js";
 import { registerConstraintAnalysisTools } from "./tools/constraints.js";
 import { registerDataPatternTools } from "./tools/data-patterns.js";
+import { registerStoredProcedureTools } from "./tools/stored-procedures.js";
 
 /**
  * Initialize and start the MSSQL MCP Server
@@ -22,7 +23,7 @@ async function main() {
   // Create MCP server instance
   const server = new McpServer({
     name: "mssql-mcp-server",
-    version: "2.0.0"
+    version: "1.2.0"
   });
 
   // Initialize connection manager
@@ -43,6 +44,9 @@ async function main() {
 
   console.error("Registering data pattern analysis tools...");
   registerDataPatternTools(server, connectionManager);
+
+  console.error("Registering enhanced stored procedure tools...");
+  registerStoredProcedureTools(server, connectionManager);
 
   console.error("All tools registered successfully. Starting server...");
 
