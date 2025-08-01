@@ -1,21 +1,21 @@
-# 🗄️ MSSQL MCP Server## 🚀 Quick Start
+# 🗄️ MSSQL MCP Server 🚀 Quick Start
 
 1. **📦 Install**: `npm install && npm run build`
 2. **⚙️ Configure**: Set up individual environment variables (see configuration below)
 3. **🔗 Connect**: Tools automatically use your configured connections
 4. **🔍 Explore**: Use natural language to query and explore your databases conversationally
 5. **📄 Extract**: Get complete stored procedure SQL code for business logic analysis
-6. **🏗️ Modernize**: Use comprehensive schema tools to plan application modernizationomprehensive Model Context Protocol (MCP) server for Microsoft SQL Server database analysis and modernizatFor complete configuration details, file locations, and troubleshooting, see the [**Configuration Guide**](CONFIGURATION_GUIDE.md).
+6. **🏗️ Modernize**: Use comprehensive schema tools to plan application modernization. This comprehensive Model Context Protocol (MCP) server for Microsoft SQL Server database analysis and modernization provides extensive capabilities for exploring and transforming your database schema. For complete configuration details, file locations, and troubleshooting, see the [**Configuration Guide**](CONFIGURATION_GUIDE.md).
 
 ## 💬 Conversational Usage
 
-With multiple connections configured, you can switch between databases naturally:This comprehensive server provides extensive tools for analyzing Classic ASP applications, exploring database schemas, and planning modernization to .NET/Angular architectures.
+With multiple connections configured, you can switch between databases naturally: This comprehensive server provides extensive tools for analyzing Classic ASP applications, exploring database schemas, and planning modernization to .NET/Angular architectures.
 
 Built using the [tedious](https://github.com/tediousjs/tedious) library for pure JavaScript SQL Server connectivity with support for Windows Authentication (NTLM).
 
 **🆕 Latest Update**: Enhanced stored procedure tools now provide complete SQL source code access for comprehensive business logic analysis and modernization planning.
 
-## � Why Windows Credentials in Environment Variables?
+## ❓ Why Windows Credentials in Environment Variables?
 
 **NTLM Pass-Through Authentication Requirement:** When connecting to SQL Server using Windows Authentication (`Integrated Security=SSPI`), the MSSQL MCP server must provide explicit domain credentials because:
 
@@ -24,14 +24,7 @@ Built using the [tedious](https://github.com/tediousjs/tedious) library for pure
 3. **Security Context**: The tedious library needs these credentials to impersonate the domain user for database access
 4. **Cross-Process Authentication**: Unlike applications running in the user's context, MCP servers need explicit credential delegation
 
-**Environment variables are the secure, standard way to provide these credentials without hardcoding them in configuration files.**
-
-## �🚀 Quick Start
-
-1. **📦 Install**: `npm install && npm run build`
-2. **⚙️ Configure**: Set up individual environment variables (see configuration below)
-3. **🔗 Connect**: Tools automatically use your configured connections
-4. **🔍 Explore**: Use natural language to query and explore your databases conversationally
+**Environment variables are the secure, standard way to provide these credentials without hard-coding them in configuration files.**
 
 ## 🛠️ Available Tools (29 Comprehensive Database Analysis Tools)
 
@@ -195,7 +188,7 @@ The server supports multiple configuration approaches for backward compatibility
 
 For complete configuration details, file locations, and troubleshooting, see the [**Configuration Guide**](CONFIGURATION_GUIDE.md).
 
-## � Security Features
+## 🔐 Security Configuration
 
 #### **Global/User Level** (Recommended for personal development)
 
@@ -327,7 +320,7 @@ Server=localhost\\SQLEXPRESS;Database=TestDB;Integrated Security=true;TrustServe
 
 **Connection Mapping**: `CONNECTION_CRM` → `crm`, `CONNECTION_HR_SYSTEM` → `hr_system`
 
-**� Technical Note: Windows Authentication Requirements**
+**💡 Technical Note: Windows Authentication Requirements**
 
 The Windows credentials (`WINDOWS_USERNAME`, `WINDOWS_PASSWORD`, `WINDOWS_DOMAIN`) are **required** for Windows Authentication because:
 
@@ -338,7 +331,7 @@ The Windows credentials (`WINDOWS_USERNAME`, `WINDOWS_PASSWORD`, `WINDOWS_DOMAIN
 
 **This isn't a configuration preference - it's a technical requirement of Windows Authentication in service contexts.**
 
-**�🔄 Alternative Approaches (Backward Compatible):**
+**🔄 Alternative Approaches (Backward Compatible):**
 
 - **JSON String Variables**: `windows_credentials`, `connections`
 - **Legacy Variables**: `MSSQL_WINDOWS_CREDENTIALS`, `MSSQL_CONNECTIONS`
