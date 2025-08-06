@@ -19,7 +19,16 @@ export interface ConnectionConfig {
     enableArithAbort: boolean;
   };
   authentication: {
-    type: "default" | "ntlm" | "token-credential" | "azure-active-directory-password" | "azure-active-directory-msi-app-service" | "azure-active-directory-msi-vm" | "azure-active-directory-access-token" | "azure-active-directory-service-principal-secret" | "azure-active-directory-default";
+    type:
+      | "default"
+      | "ntlm"
+      | "token-credential"
+      | "azure-active-directory-password"
+      | "azure-active-directory-msi-app-service"
+      | "azure-active-directory-msi-vm"
+      | "azure-active-directory-access-token"
+      | "azure-active-directory-service-principal-secret"
+      | "azure-active-directory-default";
     options: {
       userName?: string;
       password?: string;
@@ -54,6 +63,9 @@ export interface TableInfo {
   columns: any[];
   primaryKeys: any[];
   foreignKeys: any[];
+  checkConstraints?: any[];
+  indexes?: any[];
+  metadata?: any;
 }
 
 export interface StoredProcedureInfo {
