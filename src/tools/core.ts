@@ -359,11 +359,12 @@ export function registerCoreTools(
             c.ORDINAL_POSITION,
             CASE WHEN sc.is_identity = 1 THEN 'YES' ELSE 'NO' END as IS_IDENTITY,
             CASE WHEN sc.is_computed = 1 THEN 'YES' ELSE 'NO' END as IS_COMPUTED,
-            sc.definition as COMPUTED_DEFINITION,
+            ISNULL(cc.definition, '') as COMPUTED_DEFINITION,
             ISNULL(ep.value, '') as COLUMN_DESCRIPTION
           FROM INFORMATION_SCHEMA.COLUMNS c
           INNER JOIN sys.tables st ON st.name = c.TABLE_NAME AND SCHEMA_NAME(st.schema_id) = c.TABLE_SCHEMA
           INNER JOIN sys.columns sc ON sc.object_id = st.object_id AND sc.name = c.COLUMN_NAME
+          LEFT JOIN sys.computed_columns cc ON cc.object_id = st.object_id AND cc.name = c.COLUMN_NAME
           LEFT JOIN sys.extended_properties ep ON ep.major_id = st.object_id AND ep.minor_id = sc.column_id AND ep.name = 'MS_Description'
           WHERE c.TABLE_SCHEMA = '${schema.replace(
             /'/g,
@@ -380,18 +381,18 @@ export function registerCoreTools(
             connection,
             `
             SELECT 
-              cu.COLUMN_NAME,
+              kcu.COLUMN_NAME,
               tc.CONSTRAINT_NAME,
-              cu.ORDINAL_POSITION
+              kcu.ORDINAL_POSITION
             FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-            JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cu 
-              ON tc.CONSTRAINT_NAME = cu.CONSTRAINT_NAME 
-              AND tc.TABLE_SCHEMA = cu.TABLE_SCHEMA 
-              AND tc.TABLE_NAME = cu.TABLE_NAME
+            JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+              ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME 
+              AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA 
+              AND tc.TABLE_NAME = kcu.TABLE_NAME
             WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY' 
               AND tc.TABLE_SCHEMA = '${schema.replace(/'/g, "''")}' 
               AND tc.TABLE_NAME = '${tableName.replace(/'/g, "''")}'
-            ORDER BY cu.ORDINAL_POSITION
+            ORDER BY kcu.ORDINAL_POSITION
           `
           );
         } catch (error) {
