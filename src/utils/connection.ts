@@ -117,9 +117,19 @@ export class ConnectionManager {
       
       switch (lowerKey) {
         case 'server':
-        case 'data source':
-          config.server = value;
-          break;
+        case 'data source': {
+            const commaIndex = value.indexOf(',');
+            if (commaIndex !== -1) {
+                config.server = value.substring(0, commaIndex).trim();
+                const parsedPort = parseInt(value.substring(commaIndex + 1).trim(), 10);
+                if (!isNaN(parsedPort)) {
+                    config.options.port = parsedPort;
+                }
+            } else {
+                config.server = value;
+            }
+            break;
+        }
         case 'database':
         case 'initial catalog':
           config.options.database = value;
