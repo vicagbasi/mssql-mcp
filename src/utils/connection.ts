@@ -118,15 +118,10 @@ export class ConnectionManager {
       switch (lowerKey) {
         case 'server':
         case 'data source': {
-            const commaIndex = value.indexOf(',');
-            if (commaIndex !== -1) {
-                config.server = value.substring(0, commaIndex).trim();
-                const parsedPort = parseInt(value.substring(commaIndex + 1).trim(), 10);
-                if (!isNaN(parsedPort)) {
-                    config.options.port = parsedPort;
-                }
-            } else {
-                config.server = value;
+            const [server, port] = value.split(',').map(s => s.trim());
+            config.server = server;
+            if (port) {
+              config.options.port = parseInt(port, 10);
             }
             break;
         }
