@@ -4,7 +4,7 @@
       "command": "npx",
       "args": ["mssql-mcp-server"],
       "env": {
-        "MSSQL_CONNECTION_STRING": "Data Source=your-sql-server; Initial Catalog=your-db; User Id=your-sql-username; Password=your-sql-password; TrustServerCertificate=True;"
+        "MSSQL_CONNECTION_STRING": "Data Source=your-sql-server; Initial Catalog=your-db; User Id=your-sql-username; Password=your-sql-password; TrustServerCertificate=False;"
       }
     }
   }

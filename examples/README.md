@@ -29,8 +29,8 @@ This folder contains real-world configuration examples showcasing different appr
         "WINDOWS_USERNAME": "myuser",
         "WINDOWS_PASSWORD": "mypassword",
         "WINDOWS_DOMAIN": "MYDOMAIN",
-        "CONNECTION_CRM": "Data Source=crm-server; Initial Catalog=CRM; Integrated Security=SSPI; TrustServerCertificate=True;",
-        "CONNECTION_ERP": "Data Source=erp-server; Initial Catalog=ERP; Integrated Security=SSPI; TrustServerCertificate=True;"
+        "CONNECTION_CRM": "Data Source=crm-server; Initial Catalog=CRM; Integrated Security=SSPI; TrustServerCertificate=False;",
+        "CONNECTION_ERP": "Data Source=erp-server; Initial Catalog=ERP; Integrated Security=SSPI; TrustServerCertificate=False;"
       }
     }
   }
@@ -196,7 +196,7 @@ All examples use environment variables for credentials:
 - **Windows Authentication**: Use `Integrated Security=SSPI` when possible
 - **SQL Authentication**: Store credentials in environment variables, not in connection strings
 - **Azure SQL**: Use strong passwords and consider managed identities
-- **TrustServerCertificate**: Only set to `True` for trusted internal servers
+- **TrustServerCertificate**: Keep `False` by default. Set `True` only for trusted local/test servers without a valid certificate.
 
 ### Access Control
 - Use **read-only database accounts** when possible
@@ -207,12 +207,12 @@ All examples use environment variables for credentials:
 
 ### Windows Authentication (Recommended)
 ```
-Data Source=server-name; Initial Catalog=database-name; Integrated Security=SSPI; TrustServerCertificate=True;
+Data Source=server-name; Initial Catalog=database-name; Integrated Security=SSPI; TrustServerCertificate=False;
 ```
 
 ### SQL Server Authentication
 ```
-Server=server-name,1433; Database=database-name; User Id=username; Password=password; TrustServerCertificate=true;
+Server=server-name,1433; Database=database-name; User Id=username; Password=password; TrustServerCertificate=false;
 ```
 
 ### Azure SQL Database
@@ -222,7 +222,7 @@ Server=yourserver.database.windows.net; Database=database-name; User Id=username
 
 ### Named Instance
 ```
-Data Source=server-name\\INSTANCE-NAME; Initial Catalog=database-name; Integrated Security=SSPI; TrustServerCertificate=True;
+Data Source=server-name\\INSTANCE-NAME; Initial Catalog=database-name; Integrated Security=SSPI; TrustServerCertificate=False;
 ```
 
 ## 📋 Connection Naming Conventions

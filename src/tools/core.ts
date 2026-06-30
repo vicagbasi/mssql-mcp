@@ -14,6 +14,7 @@ import {
 } from "../utils/query.js";
 import { McpToolResponse, TableInfo } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerMcpTool } from "../utils/mcp-tool.js";
 
 function isExecuteQueryEnabled(): boolean {
   return process.env.MSSQL_ENABLE_EXECUTE_QUERY === "true";
@@ -24,7 +25,8 @@ export function registerCoreTools(
   connectionManager: ConnectionManager
 ): void {
   // Tool: List available connections
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_connections",
     {
       title: "List Available Connections",
@@ -72,7 +74,8 @@ export function registerCoreTools(
   );
 
   // Tool: Test connection
-  server.registerTool(
+  registerMcpTool(
+    server,
     "test_connection",
     {
       title: "Test Connection",
@@ -119,7 +122,8 @@ export function registerCoreTools(
   );
 
   // Tool: List all databases
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_databases",
     {
       title: "List Databases",
@@ -170,7 +174,8 @@ export function registerCoreTools(
   );
 
   // Tool: List all tables in a database
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_tables",
     {
       title: "List Tables",
@@ -232,7 +237,8 @@ export function registerCoreTools(
   );
 
   // Tool: Get table schema details
-  server.registerTool(
+  registerMcpTool(
+    server,
     "describe_table",
     {
       title: "Describe Table",
@@ -531,7 +537,8 @@ export function registerCoreTools(
   );
 
   // Tool: Get sample data from a table
-  server.registerTool(
+  registerMcpTool(
+    server,
     "sample_data",
     {
       title: "Sample Table Data",
@@ -598,7 +605,8 @@ export function registerCoreTools(
   );
 
   // Tool: Execute custom SQL query (read-only)
-  server.registerTool(
+  registerMcpTool(
+    server,
     "execute_query",
     {
       title: "Execute SQL Query",
@@ -672,7 +680,8 @@ export function registerCoreTools(
   );
 
   // Tool: Get database relationships
-  server.registerTool(
+  registerMcpTool(
+    server,
     "get_relationships",
     {
       title: "Get Table Relationships",

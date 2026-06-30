@@ -8,11 +8,13 @@ import { ConnectionManager, executeQuery } from "../utils/connection.js";
 import { sqlStringLiteral } from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerMcpTool } from "../utils/mcp-tool.js";
 
 export function registerConstraintAnalysisTools(server: McpServer, connectionManager: ConnectionManager): void {
 
   // Tool: List all constraints
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_constraints",
     {
       title: "List All Constraints",
@@ -92,7 +94,8 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
   );
 
   // Tool: Analyze check constraints
-  server.registerTool(
+  registerMcpTool(
+    server,
     "analyze_check_constraints",
     {
       title: "Analyze Check Constraints",
@@ -162,7 +165,8 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
   );
 
   // Tool: List user-defined data types
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_user_defined_types",
     {
       title: "List User-Defined Data Types",
@@ -218,7 +222,8 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
   );
 
   // Tool: Find computed columns
-  server.registerTool(
+  registerMcpTool(
+    server,
     "find_computed_columns",
     {
       title: "Find Computed Columns",
@@ -284,7 +289,8 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
   );
 
   // Tool: List default constraints
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_default_constraints",
     {
       title: "List Default Constraints",

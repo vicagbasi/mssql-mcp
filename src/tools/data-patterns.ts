@@ -14,11 +14,13 @@ import {
 } from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerMcpTool } from "../utils/mcp-tool.js";
 
 export function registerDataPatternTools(server: McpServer, connectionManager: ConnectionManager): void {
 
   // Tool: Analyze data distribution
-  server.registerTool(
+  registerMcpTool(
+    server,
     "analyze_data_distribution",
     {
       title: "Analyze Data Distribution",
@@ -112,7 +114,8 @@ export function registerDataPatternTools(server: McpServer, connectionManager: C
   );
 
   // Tool: Find lookup tables
-  server.registerTool(
+  registerMcpTool(
+    server,
     "find_lookup_tables",
     {
       title: "Find Lookup Tables",
@@ -265,7 +268,8 @@ export function registerDataPatternTools(server: McpServer, connectionManager: C
   );
 
   // Tool: Analyze null patterns
-  server.registerTool(
+  registerMcpTool(
+    server,
     "analyze_null_patterns",
     {
       title: "Analyze NULL Patterns",
@@ -329,7 +333,8 @@ export function registerDataPatternTools(server: McpServer, connectionManager: C
   );
 
   // Tool: Detect audit columns
-  server.registerTool(
+  registerMcpTool(
+    server,
     "detect_audit_columns",
     {
       title: "Detect Audit Columns",

@@ -14,11 +14,13 @@ import {
 } from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerMcpTool } from "../utils/mcp-tool.js";
 
 export function registerStoredProcedureTools(server: McpServer, connectionManager: ConnectionManager): void {
 
   // Tool: Get stored procedure definition (SQL query)
-  server.registerTool(
+  registerMcpTool(
+    server,
     "get_stored_procedure_definition",
     {
       title: "Get Stored Procedure Definition",
@@ -118,7 +120,8 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
   );
 
   // Tool: Get multiple stored procedure definitions
-  server.registerTool(
+  registerMcpTool(
+    server,
     "get_multiple_stored_procedure_definitions",
     {
       title: "Get Multiple Stored Procedure Definitions",
@@ -236,7 +239,8 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
   );
 
   // Tool: Get all stored procedure definitions in schema
-  server.registerTool(
+  registerMcpTool(
+    server,
     "get_all_stored_procedure_definitions",
     {
       title: "Get All Stored Procedure Definitions",
@@ -319,7 +323,8 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
   );
 
   // Tool: Search stored procedures by content
-  server.registerTool(
+  registerMcpTool(
+    server,
     "search_stored_procedures_by_content",
     {
       title: "Search Stored Procedures by Content",

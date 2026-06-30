@@ -8,11 +8,13 @@ import { ConnectionManager, executeQuery } from "../utils/connection.js";
 import { buildObjectNameLiteral, sqlStringLiteral } from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerMcpTool } from "../utils/mcp-tool.js";
 
 export function registerSchemaDiscoveryTools(server: McpServer, connectionManager: ConnectionManager): void {
 
   // Tool: List stored procedures
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_stored_procedures",
     {
       title: "List Stored Procedures",
@@ -63,7 +65,8 @@ export function registerSchemaDiscoveryTools(server: McpServer, connectionManage
   );
 
   // Tool: Describe stored procedure
-  server.registerTool(
+  registerMcpTool(
+    server,
     "describe_stored_procedure",
     {
       title: "Describe Stored Procedure",
@@ -150,7 +153,8 @@ export function registerSchemaDiscoveryTools(server: McpServer, connectionManage
   );
 
   // Tool: List views
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_views",
     {
       title: "List Views",
@@ -200,7 +204,8 @@ export function registerSchemaDiscoveryTools(server: McpServer, connectionManage
   );
 
   // Tool: Describe view
-  server.registerTool(
+  registerMcpTool(
+    server,
     "describe_view",
     {
       title: "Describe View",
@@ -284,7 +289,8 @@ export function registerSchemaDiscoveryTools(server: McpServer, connectionManage
   );
 
   // Tool: List triggers
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_triggers",
     {
       title: "List Triggers",
@@ -343,7 +349,8 @@ export function registerSchemaDiscoveryTools(server: McpServer, connectionManage
   );
 
   // Tool: Describe trigger
-  server.registerTool(
+  registerMcpTool(
+    server,
     "describe_trigger",
     {
       title: "Describe Trigger",
@@ -425,7 +432,8 @@ export function registerSchemaDiscoveryTools(server: McpServer, connectionManage
   );
 
   // Tool: List user-defined functions
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_functions",
     {
       title: "List User-Defined Functions",

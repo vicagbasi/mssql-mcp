@@ -8,11 +8,13 @@ import { ConnectionManager, executeQuery } from "../utils/connection.js";
 import { clampSqlNumber, sqlStringLiteral } from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerMcpTool } from "../utils/mcp-tool.js";
 
 export function registerIndexAndPerformanceTools(server: McpServer, connectionManager: ConnectionManager): void {
 
   // Tool: List indexes
-  server.registerTool(
+  registerMcpTool(
+    server,
     "list_indexes",
     {
       title: "List Table Indexes",
@@ -99,7 +101,8 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
   );
 
   // Tool: Analyze table statistics
-  server.registerTool(
+  registerMcpTool(
+    server,
     "analyze_table_stats",
     {
       title: "Analyze Table Statistics",
@@ -161,7 +164,8 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
   );
 
   // Tool: Find missing indexes
-  server.registerTool(
+  registerMcpTool(
+    server,
     "find_missing_indexes",
     {
       title: "Find Missing Indexes",
@@ -229,7 +233,8 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
   );
 
   // Tool: Analyze index usage
-  server.registerTool(
+  registerMcpTool(
+    server,
     "analyze_index_usage",
     {
       title: "Analyze Index Usage",
@@ -310,7 +315,8 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
   );
 
   // Tool: Get database size information
-  server.registerTool(
+  registerMcpTool(
+    server,
     "analyze_database_size",
     {
       title: "Analyze Database Size",
