@@ -36,7 +36,7 @@ Built using the [tedious](https://github.com/tediousjs/tedious) library for pure
 - **📊 list_tables** - List all tables in a specific schema (default: dbo)
 - **📝 describe_table** - Get detailed schema information including columns, data types, and constraints
 - **🎯 sample_data** - Retrieve sample data from a table (default: 10 rows, max: 100)
-- **💻 execute_query** - Execute custom SELECT queries (read-only, limited to 20 rows)
+- **💻 execute_query** - Execute custom SELECT queries (disabled by default; set `MSSQL_ENABLE_EXECUTE_QUERY=true` to enable)
 - **🔗 get_relationships** - Get foreign key relationships between tables
 
 ### 🏗️ Schema Discovery Tools (7 tools)
@@ -123,7 +123,7 @@ npm run build
    MSSQL_DOMAIN=your-domain
 
    # Default connection string for your database
-   MSSQL_CONNECTION_STRING=Data Source=your-server; Initial Catalog=your-database; Integrated Security=SSPI; TrustServerCertificate=True;
+   MSSQL_CONNECTION_STRING=Data Source=your-server; Initial Catalog=your-database; Integrated Security=SSPI; TrustServerCertificate=False;
    ```
 
 3. **Security Note:** The `.env` file is automatically ignored by Git to prevent committing credentials.
@@ -148,13 +148,13 @@ The cleanest, most professional approach using individual environment variables 
         "WINDOWS_DOMAIN": "YOUR-DOMAIN",
 
         // Optional default connection
-        "MSSQL_CONNECTION_STRING": "Data Source=main-server; Initial Catalog=MainDB; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "MSSQL_CONNECTION_STRING": "Data Source=main-server; Initial Catalog=MainDB; Integrated Security=SSPI; TrustServerCertificate=False;",
 
         // Multiple database connections (individual variables)
-        "CONNECTION_CRM": "Data Source=crm-server; Initial Catalog=CRM_Database; Integrated Security=SSPI; TrustServerCertificate=True;",
-        "CONNECTION_ERP": "Data Source=erp-server; Initial Catalog=ERP_System; Integrated Security=SSPI; TrustServerCertificate=True;",
-        "CONNECTION_ANALYTICS": "Data Source=analytics-server; Initial Catalog=DataWarehouse; Integrated Security=SSPI; TrustServerCertificate=True;",
-        "CONNECTION_HR": "Data Source=hr-server; Initial Catalog=HumanResources; Integrated Security=SSPI; TrustServerCertificate=True;"
+        "CONNECTION_CRM": "Data Source=crm-server; Initial Catalog=CRM_Database; Integrated Security=SSPI; TrustServerCertificate=False;",
+        "CONNECTION_ERP": "Data Source=erp-server; Initial Catalog=ERP_System; Integrated Security=SSPI; TrustServerCertificate=False;",
+        "CONNECTION_ANALYTICS": "Data Source=analytics-server; Initial Catalog=DataWarehouse; Integrated Security=SSPI; TrustServerCertificate=False;",
+        "CONNECTION_HR": "Data Source=hr-server; Initial Catalog=HumanResources; Integrated Security=SSPI; TrustServerCertificate=False;"
       }
     }
   }
@@ -287,13 +287,13 @@ For complete configuration details, file locations, and troubleshooting, see the
 **🔐 Windows Authentication (Recommended):**
 
 ```
-Data Source=ServerName; Initial Catalog=DatabaseName; Integrated Security=SSPI; TrustServerCertificate=True;
+Data Source=ServerName; Initial Catalog=DatabaseName; Integrated Security=SSPI; TrustServerCertificate=False;
 ```
 
 **🔑 SQL Server Authentication:**
 
 ```
-Server=localhost,1433;Database=AdventureWorks;User Id=sa;Password=YourPassword123!;Encrypt=true;TrustServerCertificate=true;
+Server=localhost,1433;Database=AdventureWorks;User Id=sa;Password=YourPassword123!;Encrypt=true;TrustServerCertificate=false;
 ```
 
 **☁️ Azure SQL Database:**
@@ -305,7 +305,7 @@ Server=your-server.database.windows.net;Database=your-database;User Id=your-user
 **🏷️ Named Instance:**
 
 ```
-Server=localhost\\SQLEXPRESS;Database=TestDB;Integrated Security=true;TrustServerCertificate=true;
+Server=localhost\\SQLEXPRESS;Database=TestDB;Integrated Security=true;TrustServerCertificate=false;
 ```
 
 ### 🎛️ Configuration Options
