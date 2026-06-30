@@ -97,7 +97,7 @@ export class ConnectionManager {
       server: 'localhost',
       options: {
         encrypt: true,
-        trustServerCertificate: true,
+        trustServerCertificate: false,
         enableArithAbort: true
       },
       authentication: {
@@ -110,7 +110,11 @@ export class ConnectionManager {
     const parts = connectionString.split(';').filter(part => part.trim());
     
     for (const part of parts) {
-      const [key, value] = part.split('=').map(s => s.trim());
+      const separatorIndex = part.indexOf('=');
+      if (separatorIndex === -1) continue;
+
+      const key = part.slice(0, separatorIndex).trim();
+      const value = part.slice(separatorIndex + 1).trim();
       if (!key || !value) continue;
       
       const lowerKey = key.toLowerCase();
@@ -164,12 +168,19 @@ export class ConnectionManager {
     return config;
   }
 
-  public getConnectionString(providedConnectionString?: string, connectionName?: string): string {
-    // Priority: explicit connectionString > named connection > default
-    if (providedConnectionString) {
-      return providedConnectionString;
+  public getConnectionString(connectionName?: string, legacyConnectionName?: string): string {
+    if (legacyConnectionName !== undefined) {
+      if (connectionName) {
+        throw new Error('Explicit connectionString tool arguments are disabled for security. Configure MSSQL_CONNECTION_STRING or a named CONNECTION_* environment variable instead.');
+      }
+
+      connectionName = legacyConnectionName;
     }
-    
+
+    if (connectionName?.includes(';') || connectionName?.includes('=')) {
+      throw new Error('Explicit connectionString tool arguments are disabled for security. Configure MSSQL_CONNECTION_STRING or a named CONNECTION_* environment variable instead.');
+    }
+
     if (connectionName) {
       const namedConnection = this.namedConnections[connectionName];
       if (!namedConnection) {
@@ -185,8 +196,8 @@ export class ConnectionManager {
     throw new Error('No connection string provided and no default connection string configured');
   }
 
-  public async getConnection(connectionString?: string, connectionName?: string): Promise<Connection> {
-    const actualConnectionString = this.getConnectionString(connectionString, connectionName);
+  public async getConnection(connectionName?: string, legacyConnectionName?: string): Promise<Connection> {
+    const actualConnectionString = this.getConnectionString(connectionName, legacyConnectionName);
     
     if (this.connections.has(actualConnectionString)) {
       const connection = this.connections.get(actualConnectionString)!;

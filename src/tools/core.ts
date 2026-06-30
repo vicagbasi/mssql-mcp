@@ -8,9 +8,16 @@ import {
   validateReadOnlyQuery,
   addLimitToQuery,
   buildTableReference,
+  clampSqlInteger,
+  sqlLikeContainsLiteral,
+  sqlStringLiteral,
 } from "../utils/query.js";
 import { McpToolResponse, TableInfo } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+function isExecuteQueryEnabled(): boolean {
+  return process.env.MSSQL_ENABLE_EXECUTE_QUERY === "true";
+}
 
 export function registerCoreTools(
   server: McpServer,
@@ -30,7 +37,7 @@ export function registerCoreTools(
         const namedConnections = connectionManager.getNamedConnections();
         const connectionList = Object.keys(namedConnections).map((name) => ({
           name,
-          connectionString: namedConnections[name],
+          configured: true,
         }));
 
         const result = {
@@ -72,22 +79,15 @@ export function registerCoreTools(
       description:
         "Test the database connection and return basic server information",
       inputSchema: {
-        connectionString: z
-          .string()
-          .optional()
-          .describe(
-            "SQL Server connection string (uses default if not provided)"
-          ),
         connectionName: z
           .string()
           .optional()
           .describe("Named connection to use (e.g., 'production', 'staging')"),
       },
     },
-    async ({ connectionString, connectionName }): Promise<McpToolResponse> => {
+    async ({ connectionName }): Promise<McpToolResponse> => {
       try {
         const connection = await connectionManager.getConnection(
-          connectionString,
           connectionName
         );
         const result = await executeQuery(
@@ -125,29 +125,22 @@ export function registerCoreTools(
       title: "List Databases",
       description: "List all databases available on the SQL Server instance",
       inputSchema: {
-        connectionString: z
-          .string()
-          .optional()
-          .describe(
-            "SQL Server connection string (uses default if not provided)"
-          ),
         connectionName: z
           .string()
           .optional()
           .describe("Named connection to use (e.g., 'production', 'staging')"),
       },
     },
-    async ({ connectionString, connectionName }): Promise<McpToolResponse> => {
+    async ({ connectionName }): Promise<McpToolResponse> => {
       try {
         const connection = await connectionManager.getConnection(
-          connectionString,
           connectionName
         );
         const result = await executeQuery(
           connection,
           `
           SELECT name, database_id, create_date, collation_name
-          FROM sys.databases 
+          FROM sys.databases
           WHERE state = 0
           ORDER BY name
         `
@@ -183,12 +176,6 @@ export function registerCoreTools(
       title: "List Tables",
       description: "List all tables in the connected database",
       inputSchema: {
-        connectionString: z
-          .string()
-          .optional()
-          .describe(
-            "SQL Server connection string (uses default if not provided)"
-          ),
         connectionName: z
           .string()
           .optional()
@@ -197,19 +184,18 @@ export function registerCoreTools(
       },
     },
     async ({
-      connectionString,
       connectionName,
       schema = "dbo",
     }): Promise<McpToolResponse> => {
       try {
         const connection = await connectionManager.getConnection(
-          connectionString,
           connectionName
         );
+        const schemaLiteral = sqlStringLiteral(schema);
         const result = await executeQuery(
           connection,
           `
-          SELECT 
+          SELECT
             t.TABLE_SCHEMA,
             t.TABLE_NAME,
             t.TABLE_TYPE,
@@ -217,7 +203,7 @@ export function registerCoreTools(
           FROM INFORMATION_SCHEMA.TABLES t
           LEFT JOIN sys.tables st ON st.name = t.TABLE_NAME
           LEFT JOIN sys.extended_properties ep ON ep.major_id = st.object_id AND ep.minor_id = 0 AND ep.name = 'MS_Description'
-          WHERE t.TABLE_SCHEMA = '${schema}'
+          WHERE t.TABLE_SCHEMA = ${schemaLiteral}
           ORDER BY t.TABLE_NAME
         `
         );
@@ -253,12 +239,6 @@ export function registerCoreTools(
       description:
         "Get detailed schema information for a specific table including columns, data types, and constraints",
       inputSchema: {
-        connectionString: z
-          .string()
-          .optional()
-          .describe(
-            "SQL Server connection string (uses default if not provided)"
-          ),
         connectionName: z
           .string()
           .optional()
@@ -268,28 +248,29 @@ export function registerCoreTools(
       },
     },
     async ({
-      connectionString,
       connectionName,
       tableName,
       schema = "dbo",
     }): Promise<McpToolResponse> => {
       try {
         const connection = await connectionManager.getConnection(
-          connectionString,
           connectionName
         );
+        const schemaLiteral = sqlStringLiteral(schema);
+        const tableNameLiteral = sqlStringLiteral(tableName);
+        const tableNameSearchLiteral = sqlLikeContainsLiteral(tableName);
 
         // First check if table exists using a more robust query
         const tableExistsResult = await executeQuery(
           connection,
           `
-          SELECT 
+          SELECT
             COUNT(*) as table_count,
             MAX(t.TABLE_TYPE) as table_type,
             MAX(t.TABLE_SCHEMA) as actual_schema
           FROM INFORMATION_SCHEMA.TABLES t
-          WHERE UPPER(t.TABLE_SCHEMA) = UPPER('${schema.replace(/'/g, "''")}') 
-            AND UPPER(t.TABLE_NAME) = UPPER('${tableName.replace(/'/g, "''")}')
+          WHERE UPPER(t.TABLE_SCHEMA) = UPPER(${schemaLiteral})
+            AND UPPER(t.TABLE_NAME) = UPPER(${tableNameLiteral})
         `
         );
 
@@ -298,17 +279,14 @@ export function registerCoreTools(
           const similarTables = await executeQuery(
             connection,
             `
-            SELECT TOP 5 
+            SELECT TOP 5
               TABLE_SCHEMA,
               TABLE_NAME,
               TABLE_TYPE
-            FROM INFORMATION_SCHEMA.TABLES 
-            WHERE TABLE_NAME LIKE '%${tableName.replace(/'/g, "''")}%'
-            ORDER BY 
-              CASE WHEN UPPER(TABLE_NAME) = UPPER('${tableName.replace(
-                /'/g,
-                "''"
-              )}') THEN 1 ELSE 2 END,
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_NAME LIKE ${tableNameSearchLiteral}
+            ORDER BY
+              CASE WHEN UPPER(TABLE_NAME) = UPPER(${tableNameLiteral}) THEN 1 ELSE 2 END,
               TABLE_NAME
           `
           );
@@ -337,13 +315,13 @@ export function registerCoreTools(
         const columnsResult = await executeQuery(
           connection,
           `
-          SELECT 
+          SELECT
             c.COLUMN_NAME,
             c.DATA_TYPE,
-            CASE 
-              WHEN c.DATA_TYPE IN ('varchar', 'nvarchar', 'char', 'nchar') 
-              THEN c.DATA_TYPE + '(' + 
-                CASE WHEN c.CHARACTER_MAXIMUM_LENGTH = -1 THEN 'MAX' 
+            CASE
+              WHEN c.DATA_TYPE IN ('varchar', 'nvarchar', 'char', 'nchar')
+              THEN c.DATA_TYPE + '(' +
+                CASE WHEN c.CHARACTER_MAXIMUM_LENGTH = -1 THEN 'MAX'
                      ELSE CAST(c.CHARACTER_MAXIMUM_LENGTH AS VARCHAR(10)) END + ')'
               WHEN c.DATA_TYPE IN ('decimal', 'numeric')
               THEN c.DATA_TYPE + '(' + CAST(c.NUMERIC_PRECISION AS VARCHAR(3)) + ',' + CAST(c.NUMERIC_SCALE AS VARCHAR(3)) + ')'
@@ -366,10 +344,7 @@ export function registerCoreTools(
           INNER JOIN sys.columns sc ON sc.object_id = st.object_id AND sc.name = c.COLUMN_NAME
           LEFT JOIN sys.computed_columns cc ON cc.object_id = st.object_id AND cc.name = c.COLUMN_NAME
           LEFT JOIN sys.extended_properties ep ON ep.major_id = st.object_id AND ep.minor_id = sc.column_id AND ep.name = 'MS_Description'
-          WHERE c.TABLE_SCHEMA = '${schema.replace(
-            /'/g,
-            "''"
-          )}' AND c.TABLE_NAME = '${tableName.replace(/'/g, "''")}'
+          WHERE c.TABLE_SCHEMA = ${schemaLiteral} AND c.TABLE_NAME = ${tableNameLiteral}
           ORDER BY c.ORDINAL_POSITION
         `
         );
@@ -380,18 +355,18 @@ export function registerCoreTools(
           pkResult = await executeQuery(
             connection,
             `
-            SELECT 
+            SELECT
               kcu.COLUMN_NAME,
               tc.CONSTRAINT_NAME,
               kcu.ORDINAL_POSITION
             FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
             JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
-              ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME 
-              AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA 
+              ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+              AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
               AND tc.TABLE_NAME = kcu.TABLE_NAME
-            WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY' 
-              AND tc.TABLE_SCHEMA = '${schema.replace(/'/g, "''")}' 
-              AND tc.TABLE_NAME = '${tableName.replace(/'/g, "''")}'
+            WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+              AND tc.TABLE_SCHEMA = ${schemaLiteral}
+              AND tc.TABLE_NAME = ${tableNameLiteral}
             ORDER BY kcu.ORDINAL_POSITION
           `
           );
@@ -405,7 +380,7 @@ export function registerCoreTools(
           fkResult = await executeQuery(
             connection,
             `
-            SELECT 
+            SELECT
               fk.name as CONSTRAINT_NAME,
               COL_NAME(fkc.parent_object_id, fkc.parent_column_id) as COLUMN_NAME,
               SCHEMA_NAME(ro.schema_id) as REFERENCED_TABLE_SCHEMA,
@@ -418,8 +393,8 @@ export function registerCoreTools(
             INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
             INNER JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
             INNER JOIN sys.tables ro ON fkc.referenced_object_id = ro.object_id
-            WHERE pt.name = '${tableName.replace(/'/g, "''")}' 
-              AND SCHEMA_NAME(pt.schema_id) = '${schema.replace(/'/g, "''")}'
+            WHERE pt.name = ${tableNameLiteral}
+              AND SCHEMA_NAME(pt.schema_id) = ${schemaLiteral}
             ORDER BY fk.name, fkc.constraint_column_id
           `
           );
@@ -433,15 +408,15 @@ export function registerCoreTools(
           checkConstraints = await executeQuery(
             connection,
             `
-            SELECT 
+            SELECT
               cc.name as CONSTRAINT_NAME,
               cc.definition as CHECK_CLAUSE,
               cc.is_disabled as IS_DISABLED,
               cc.is_not_trusted as IS_NOT_TRUSTED
             FROM sys.check_constraints cc
             INNER JOIN sys.tables t ON cc.parent_object_id = t.object_id
-            WHERE t.name = '${tableName.replace(/'/g, "''")}' 
-              AND SCHEMA_NAME(t.schema_id) = '${schema.replace(/'/g, "''")}'
+            WHERE t.name = ${tableNameLiteral}
+              AND SCHEMA_NAME(t.schema_id) = ${schemaLiteral}
             ORDER BY cc.name
           `
           );
@@ -455,7 +430,7 @@ export function registerCoreTools(
           indexes = await executeQuery(
             connection,
             `
-            SELECT 
+            SELECT
               i.name as INDEX_NAME,
               i.type_desc as INDEX_TYPE,
               i.is_unique as IS_UNIQUE,
@@ -480,8 +455,8 @@ export function registerCoreTools(
               ), 1, 2, '') as INCLUDED_COLUMNS
             FROM sys.indexes i
             INNER JOIN sys.tables t ON i.object_id = t.object_id
-            WHERE t.name = '${tableName.replace(/'/g, "''")}' 
-              AND SCHEMA_NAME(t.schema_id) = '${schema.replace(/'/g, "''")}'
+            WHERE t.name = ${tableNameLiteral}
+              AND SCHEMA_NAME(t.schema_id) = ${schemaLiteral}
               AND i.type > 0
             ORDER BY i.is_primary_key DESC, i.is_unique DESC, i.name
           `
@@ -496,7 +471,7 @@ export function registerCoreTools(
           const metadataResult = await executeQuery(
             connection,
             `
-            SELECT 
+            SELECT
               t.name as TABLE_NAME,
               SCHEMA_NAME(t.schema_id) as SCHEMA_NAME,
               t.create_date as CREATED_DATE,
@@ -510,8 +485,8 @@ export function registerCoreTools(
             INNER JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
             INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
             LEFT JOIN sys.extended_properties ep ON ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.name = 'MS_Description'
-            WHERE t.name = '${tableName.replace(/'/g, "''")}' 
-              AND SCHEMA_NAME(t.schema_id) = '${schema.replace(/'/g, "''")}'
+            WHERE t.name = ${tableNameLiteral}
+              AND SCHEMA_NAME(t.schema_id) = ${schemaLiteral}
               AND i.index_id < 2
             GROUP BY t.name, t.schema_id, t.create_date, t.modify_date, p.rows, ep.value
           `
@@ -562,12 +537,6 @@ export function registerCoreTools(
       title: "Sample Table Data",
       description: "Retrieve sample data from a table (top 10 rows by default)",
       inputSchema: {
-        connectionString: z
-          .string()
-          .optional()
-          .describe(
-            "SQL Server connection string (uses default if not provided)"
-          ),
         connectionName: z
           .string()
           .optional()
@@ -581,16 +550,14 @@ export function registerCoreTools(
       },
     },
     async ({
-      connectionString,
       connectionName,
       tableName,
       schema = "dbo",
       limit = 10,
     }): Promise<McpToolResponse> => {
       try {
-        const actualLimit = Math.min(limit, 100); // Cap at 100 for safety
+        const actualLimit = clampSqlInteger(limit, 1, 100, 10);
         const connection = await connectionManager.getConnection(
-          connectionString,
           connectionName
         );
         const tableRef = buildTableReference(tableName, schema);
@@ -636,14 +603,8 @@ export function registerCoreTools(
     {
       title: "Execute SQL Query",
       description:
-        "Execute a custom SQL SELECT query with automatic limit (top 20 rows)",
+        "Execute a custom SQL SELECT query with automatic limit (top 20 rows). Disabled unless MSSQL_ENABLE_EXECUTE_QUERY=true.",
       inputSchema: {
-        connectionString: z
-          .string()
-          .optional()
-          .describe(
-            "SQL Server connection string (uses default if not provided)"
-          ),
         connectionName: z
           .string()
           .optional()
@@ -652,11 +613,22 @@ export function registerCoreTools(
       },
     },
     async ({
-      connectionString,
       connectionName,
       query,
     }): Promise<McpToolResponse> => {
       try {
+        if (!isExecuteQueryEnabled()) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "execute_query is disabled. Set MSSQL_ENABLE_EXECUTE_QUERY=true to enable this high-risk tool.",
+              },
+            ],
+            isError: true,
+          };
+        }
+
         // Validate query is read-only
         validateReadOnlyQuery(query);
 
@@ -664,7 +636,6 @@ export function registerCoreTools(
         const limitedQuery = addLimitToQuery(query, 20);
 
         const connection = await connectionManager.getConnection(
-          connectionString,
           connectionName
         );
         const result = await executeQuery(connection, limitedQuery);
@@ -708,12 +679,6 @@ export function registerCoreTools(
       description:
         "Get foreign key relationships between tables in the database",
       inputSchema: {
-        connectionString: z
-          .string()
-          .optional()
-          .describe(
-            "SQL Server connection string (uses default if not provided)"
-          ),
         connectionName: z
           .string()
           .optional()
@@ -722,19 +687,18 @@ export function registerCoreTools(
       },
     },
     async ({
-      connectionString,
       connectionName,
       schema = "dbo",
     }): Promise<McpToolResponse> => {
       try {
         const connection = await connectionManager.getConnection(
-          connectionString,
           connectionName
         );
+        const schemaLiteral = sqlStringLiteral(schema);
         const result = await executeQuery(
           connection,
           `
-          SELECT 
+          SELECT
             fk.name AS CONSTRAINT_NAME,
             tp.name AS PARENT_TABLE,
             cp.name AS PARENT_COLUMN,
@@ -749,7 +713,7 @@ export function registerCoreTools(
           INNER JOIN sys.columns cp ON fkc.parent_column_id = cp.column_id AND fkc.parent_object_id = cp.object_id
           INNER JOIN sys.columns cr ON fkc.referenced_column_id = cr.column_id AND fkc.referenced_object_id = cr.object_id
           INNER JOIN sys.schemas s ON tp.schema_id = s.schema_id
-          WHERE s.name = '${schema}'
+          WHERE s.name = ${schemaLiteral}
           ORDER BY tp.name, fk.name
         `
         );

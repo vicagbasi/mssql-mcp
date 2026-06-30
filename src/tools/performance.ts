@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { ConnectionManager, executeQuery } from "../utils/connection.js";
-import { sanitizeName } from "../utils/query.js";
+import { clampSqlNumber, sqlStringLiteral } from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -18,18 +18,18 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
       title: "List Table Indexes",
       description: "List all indexes on tables with usage statistics and detailed information",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         tableName: z.string().optional().describe("Filter by specific table name"),
         includeUsageStats: z.boolean().optional().describe("Include index usage statistics (default: true)")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", tableName, includeUsageStats = true }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", tableName, includeUsageStats = true }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
-        const tableFilter = tableName ? `AND t.name = '${sanitizeName(tableName)}'` : "";
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
+        const tableFilter = tableName ? `AND t.name = ${sqlStringLiteral(tableName)}` : "";
         const usageStatsJoin = includeUsageStats ? `
           LEFT JOIN sys.dm_db_index_usage_stats ius ON i.object_id = ius.object_id AND i.index_id = ius.index_id
         ` : "";
@@ -43,9 +43,9 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
           ius.last_user_lookup,
           ius.last_user_update
         ` : "";
-        
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as table_schema,
             t.name as table_name,
             i.name as index_name,
@@ -74,11 +74,11 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
           FROM sys.indexes i
           INNER JOIN sys.tables t ON i.object_id = t.object_id
           ${usageStatsJoin}
-          WHERE SCHEMA_NAME(t.schema_id) = '${sanitizeName(schema)}' 
+          WHERE SCHEMA_NAME(t.schema_id) = ${schemaLiteral}
             AND i.type > 0 ${tableFilter}
           ORDER BY t.name, i.name
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -105,20 +105,20 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
       title: "Analyze Table Statistics",
       description: "Get table row counts, size information, and last update statistics",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         tableName: z.string().optional().describe("Filter by specific table name")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
-        const tableFilter = tableName ? `AND t.name = '${sanitizeName(tableName)}'` : "";
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
+        const tableFilter = tableName ? `AND t.name = ${sqlStringLiteral(tableName)}` : "";
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as table_schema,
             t.name as table_name,
             p.rows as row_count,
@@ -133,14 +133,14 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
           INNER JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
           INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
           LEFT JOIN sys.dm_db_partition_stats ps ON t.object_id = ps.object_id AND i.index_id = ps.index_id
-          WHERE SCHEMA_NAME(t.schema_id) = '${sanitizeName(schema)}'
+          WHERE SCHEMA_NAME(t.schema_id) = ${schemaLiteral}
             AND i.index_id < 2 ${tableFilter}
-          GROUP BY 
+          GROUP BY
             t.schema_id, t.name, p.rows, t.create_date, t.modify_date,
             i.object_id, i.index_id
           ORDER BY used_space_mb DESC
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -167,29 +167,30 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
       title: "Find Missing Indexes",
       description: "Identify potentially missing indexes based on query execution patterns",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         minImpact: z.number().optional().describe("Minimum impact score to include (default: 1000)")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", minImpact = 1000 }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", minImpact = 1000 }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+        const actualMinImpact = clampSqlNumber(minImpact, 0, Number.MAX_SAFE_INTEGER, 1000);
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(o.schema_id) as table_schema,
             OBJECT_NAME(mid.object_id) as table_name,
             migs.avg_total_user_cost * (migs.avg_user_impact / 100.0) * (migs.user_seeks + migs.user_scans) AS improvement_measure,
-            'CREATE INDEX [IX_' + OBJECT_NAME(mid.object_id) + '_' 
-              + REPLACE(REPLACE(REPLACE(ISNULL(mid.equality_columns,''),', ','_'),'[',''),']','') 
-              + CASE WHEN mid.inequality_columns IS NOT NULL 
-                THEN '_' + REPLACE(REPLACE(REPLACE(mid.inequality_columns,', ','_'),'[',''),']','') 
-                ELSE '' END + '] ON ' 
-              + QUOTENAME(SCHEMA_NAME(o.schema_id)) + '.' + QUOTENAME(OBJECT_NAME(mid.object_id)) 
+            'CREATE INDEX [IX_' + OBJECT_NAME(mid.object_id) + '_'
+              + REPLACE(REPLACE(REPLACE(ISNULL(mid.equality_columns,''),', ','_'),'[',''),']','')
+              + CASE WHEN mid.inequality_columns IS NOT NULL
+                THEN '_' + REPLACE(REPLACE(REPLACE(mid.inequality_columns,', ','_'),'[',''),']','')
+                ELSE '' END + '] ON '
+              + QUOTENAME(SCHEMA_NAME(o.schema_id)) + '.' + QUOTENAME(OBJECT_NAME(mid.object_id))
               + ' (' + ISNULL(mid.equality_columns,'')
-              + CASE WHEN mid.equality_columns IS NOT NULL AND mid.inequality_columns IS NOT NULL 
+              + CASE WHEN mid.equality_columns IS NOT NULL AND mid.inequality_columns IS NOT NULL
                 THEN ',' ELSE '' END + ISNULL(mid.inequality_columns, '') + ')'
               + ISNULL(' INCLUDE (' + mid.included_columns + ')', '') AS create_index_statement,
             migs.user_seeks,
@@ -203,11 +204,11 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
           INNER JOIN sys.dm_db_missing_index_groups mig ON mid.index_handle = mig.index_handle
           INNER JOIN sys.dm_db_missing_index_group_stats migs ON mig.index_group_handle = migs.group_handle
           INNER JOIN sys.objects o ON mid.object_id = o.object_id
-          WHERE migs.avg_total_user_cost * (migs.avg_user_impact / 100.0) * (migs.user_seeks + migs.user_scans) > ${minImpact}
-            AND SCHEMA_NAME(o.schema_id) = '${sanitizeName(schema)}'
+          WHERE migs.avg_total_user_cost * (migs.avg_user_impact / 100.0) * (migs.user_seeks + migs.user_scans) > ${actualMinImpact}
+            AND SCHEMA_NAME(o.schema_id) = ${schemaLiteral}
           ORDER BY improvement_measure DESC
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -234,25 +235,25 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
       title: "Analyze Index Usage",
       description: "Show detailed index usage statistics to identify unused or underutilized indexes",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         tableName: z.string().optional().describe("Filter by specific table name"),
         showUnusedOnly: z.boolean().optional().describe("Show only unused indexes (default: false)")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", tableName, showUnusedOnly = false }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", tableName, showUnusedOnly = false }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
-        const tableFilter = tableName ? `AND t.name = '${sanitizeName(tableName)}'` : "";
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
+        const tableFilter = tableName ? `AND t.name = ${sqlStringLiteral(tableName)}` : "";
         const unusedFilter = showUnusedOnly ? `
           AND (ius.user_seeks IS NULL AND ius.user_scans IS NULL AND ius.user_lookups IS NULL)
           AND i.is_primary_key = 0 AND i.is_unique_constraint = 0
         ` : "";
-        
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as table_schema,
             t.name as table_name,
             i.name as index_name,
@@ -268,9 +269,9 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
             ius.last_user_scan,
             ius.last_user_lookup,
             ius.last_user_update,
-            CASE 
-              WHEN ius.user_seeks IS NULL AND ius.user_scans IS NULL AND ius.user_lookups IS NULL 
-                AND i.is_primary_key = 0 AND i.is_unique_constraint = 0 
+            CASE
+              WHEN ius.user_seeks IS NULL AND ius.user_scans IS NULL AND ius.user_lookups IS NULL
+                AND i.is_primary_key = 0 AND i.is_unique_constraint = 0
               THEN 'UNUSED - Consider dropping'
               WHEN ISNULL(ius.user_updates, 0) > (ISNULL(ius.user_seeks, 0) + ISNULL(ius.user_scans, 0) + ISNULL(ius.user_lookups, 0)) * 3
               THEN 'HIGH MAINTENANCE - Updates > 3x Reads'
@@ -281,14 +282,14 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
           FROM sys.indexes i
           INNER JOIN sys.tables t ON i.object_id = t.object_id
           LEFT JOIN sys.dm_db_index_usage_stats ius ON i.object_id = ius.object_id AND i.index_id = ius.index_id
-          WHERE SCHEMA_NAME(t.schema_id) = '${sanitizeName(schema)}'
+          WHERE SCHEMA_NAME(t.schema_id) = ${schemaLiteral}
             AND i.type > 0 ${tableFilter} ${unusedFilter}
-          ORDER BY 
+          ORDER BY
             usage_assessment DESC,
             total_reads DESC,
             t.name, i.name
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -315,22 +316,21 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
       title: "Analyze Database Size",
       description: "Get comprehensive database size information including data and log file sizes",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')")
       }
     },
-    async ({ connectionString, connectionName }): Promise<McpToolResponse> => {
+    async ({ connectionName }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+
         // Get database file information
         const filesResult = await executeQuery(connection, `
-          SELECT 
+          SELECT
             name as file_name,
             type_desc as file_type,
             physical_name,
             CAST(size * 8.0 / 1024 AS DECIMAL(10,2)) as size_mb,
-            CASE max_size 
+            CASE max_size
               WHEN -1 THEN 'Unlimited'
               WHEN 0 THEN 'No growth allowed'
               ELSE CAST(max_size * 8.0 / 1024 AS VARCHAR(20)) + ' MB'
@@ -346,7 +346,7 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
 
         // Get space usage by schema
         const schemaUsageResult = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as schema_name,
             COUNT(*) as table_count,
             SUM(p.rows) as total_rows,
@@ -366,7 +366,7 @@ export function registerIndexAndPerformanceTools(server: McpServer, connectionMa
           database_files: filesResult,
           schema_usage: schemaUsageResult
         };
-        
+
         return {
           content: [{
             type: "text",

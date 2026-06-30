@@ -5,7 +5,13 @@
 
 import { z } from "zod";
 import { ConnectionManager, executeQuery } from "../utils/connection.js";
-import { sanitizeName } from "../utils/query.js";
+import {
+  buildObjectNameLiteral,
+  clampSqlInteger,
+  escapeLikePattern,
+  sqlLikeContainsLiteral,
+  sqlStringLiteral,
+} from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -18,28 +24,30 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
       title: "Get Stored Procedure Definition",
       description: "Get the complete SQL query/definition of a stored procedure - this is the actual source code",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         procedureName: z.string().describe("Name of the stored procedure to get definition for"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         formatOutput: z.boolean().optional().describe("Format the SQL output for better readability (default: true)")
       }
     },
-    async ({ connectionString, connectionName, procedureName, schema = "dbo", formatOutput = true }): Promise<McpToolResponse> => {
+    async ({ connectionName, procedureName, schema = "dbo", formatOutput = true }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+        const procedureNameLiteral = sqlStringLiteral(procedureName);
+        const procedureObjectLiteral = buildObjectNameLiteral(procedureName, schema);
+
         // First, verify the procedure exists
         const existsResult = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(p.schema_id) as schema_name,
             p.name as procedure_name,
             p.type_desc as object_type,
             p.create_date,
             p.modify_date
           FROM sys.procedures p
-          WHERE p.name = '${sanitizeName(procedureName)}' 
-            AND SCHEMA_NAME(p.schema_id) = '${sanitizeName(schema)}'
+          WHERE p.name = ${procedureNameLiteral}
+            AND SCHEMA_NAME(p.schema_id) = ${schemaLiteral}
         `);
 
         if (existsResult.length === 0) {
@@ -54,9 +62,9 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
 
         // Get the complete definition using OBJECT_DEFINITION
         const definitionResult = await executeQuery(connection, `
-          SELECT 
-            OBJECT_DEFINITION(OBJECT_ID('${sanitizeName(schema)}.${sanitizeName(procedureName)}')) as definition,
-            LEN(OBJECT_DEFINITION(OBJECT_ID('${sanitizeName(schema)}.${sanitizeName(procedureName)}'))) as definition_length
+          SELECT
+            OBJECT_DEFINITION(OBJECT_ID(${procedureObjectLiteral})) as definition,
+            LEN(OBJECT_DEFINITION(OBJECT_ID(${procedureObjectLiteral}))) as definition_length
         `);
 
         const definition = definitionResult[0]?.definition;
@@ -73,7 +81,7 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
         }
 
         const procedureInfo = existsResult[0];
-        
+
         const result = {
           procedureInfo: {
             ...procedureInfo,
@@ -89,7 +97,7 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
             method_used: "OBJECT_DEFINITION()"
           }
         };
-        
+
         return {
           content: [{
             type: "text",
@@ -116,17 +124,17 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
       title: "Get Multiple Stored Procedure Definitions",
       description: "Get complete SQL definitions for multiple stored procedures at once",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         procedureNames: z.array(z.string()).describe("Array of stored procedure names to get definitions for"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         includeMetadata: z.boolean().optional().describe("Include metadata like creation date, modification date (default: true)")
       }
     },
-    async ({ connectionString, connectionName, procedureNames, schema = "dbo", includeMetadata = true }): Promise<McpToolResponse> => {
+    async ({ connectionName, procedureNames, schema = "dbo", includeMetadata = true }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
         if (procedureNames.length === 0) {
           return {
             content: [{
@@ -140,19 +148,20 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
         // Limit to reasonable number to avoid performance issues
         const maxProcedures = 20;
         const limitedProcedures = procedureNames.slice(0, maxProcedures);
-        
+
         if (procedureNames.length > maxProcedures) {
           console.warn(`Limited request to first ${maxProcedures} procedures out of ${procedureNames.length} requested.`);
         }
 
         const procedures = [];
         const notFound = [];
-        
+
         for (const procedureName of limitedProcedures) {
           try {
+            const procedureNameLiteral = sqlStringLiteral(procedureName);
             // Get procedure info and definition
             const combinedResult = await executeQuery(connection, `
-              SELECT 
+              SELECT
                 SCHEMA_NAME(p.schema_id) as schema_name,
                 p.name as procedure_name,
                 p.type_desc as object_type,
@@ -163,8 +172,8 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
                 ISNULL(ep.value, '') as description
               FROM sys.procedures p
               LEFT JOIN sys.extended_properties ep ON ep.major_id = p.object_id AND ep.minor_id = 0 AND ep.name = 'MS_Description'
-              WHERE p.name = '${sanitizeName(procedureName)}' 
-                AND SCHEMA_NAME(p.schema_id) = '${sanitizeName(schema)}'
+              WHERE p.name = ${procedureNameLiteral}
+                AND SCHEMA_NAME(p.schema_id) = ${schemaLiteral}
             `);
 
             if (combinedResult.length > 0) {
@@ -206,7 +215,7 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
           not_found: notFound,
           retrieved_at: new Date().toISOString()
         };
-        
+
         return {
           content: [{
             type: "text",
@@ -233,21 +242,21 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
       title: "Get All Stored Procedure Definitions",
       description: "Get complete SQL definitions for all stored procedures in a schema",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         includeSystemProcedures: z.boolean().optional().describe("Include system stored procedures (default: false)"),
         maxResults: z.number().optional().describe("Maximum number of procedures to return (default: 50, max: 100)")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", includeSystemProcedures = false, maxResults = 50 }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", includeSystemProcedures = false, maxResults = 50 }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
         // Limit results to prevent overwhelming responses
-        const actualMaxResults = Math.min(maxResults || 50, 100);
+        const actualMaxResults = clampSqlInteger(maxResults || 50, 1, 100, 50);
         const systemFilter = includeSystemProcedures ? "" : "AND p.is_ms_shipped = 0";
-        
+
         const result = await executeQuery(connection, `
           SELECT TOP ${actualMaxResults}
             SCHEMA_NAME(p.schema_id) as schema_name,
@@ -260,7 +269,7 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
             ISNULL(ep.value, '') as description
           FROM sys.procedures p
           LEFT JOIN sys.extended_properties ep ON ep.major_id = p.object_id AND ep.minor_id = 0 AND ep.name = 'MS_Description'
-          WHERE SCHEMA_NAME(p.schema_id) = '${sanitizeName(schema)}' ${systemFilter}
+          WHERE SCHEMA_NAME(p.schema_id) = ${schemaLiteral} ${systemFilter}
             AND OBJECT_DEFINITION(p.object_id) IS NOT NULL
           ORDER BY p.name
         `);
@@ -286,7 +295,7 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
           max_results_limit: actualMaxResults,
           retrieved_at: new Date().toISOString()
         };
-        
+
         return {
           content: [{
             type: "text",
@@ -316,7 +325,6 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
       title: "Search Stored Procedures by Content",
       description: "Search for stored procedures containing specific text or patterns in their SQL definition",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         searchText: z.string().describe("Text or pattern to search for in procedure definitions"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
@@ -324,10 +332,11 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
         includeDefinitions: z.boolean().optional().describe("Include full procedure definitions in results (default: false)")
       }
     },
-    async ({ connectionString, connectionName, searchText, schema = "dbo", caseSensitive = false, includeDefinitions = false }): Promise<McpToolResponse> => {
+    async ({ connectionName, searchText, schema = "dbo", caseSensitive = false, includeDefinitions = false }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
         if (!searchText || searchText.trim().length === 0) {
           return {
             content: [{
@@ -339,16 +348,17 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
         }
 
         // Build the search condition based on case sensitivity
-        const searchCondition = caseSensitive 
-          ? `OBJECT_DEFINITION(p.object_id) LIKE '%${sanitizeName(searchText)}%'`
-          : `LOWER(OBJECT_DEFINITION(p.object_id)) LIKE LOWER('%${sanitizeName(searchText)}%')`;
+        const searchPatternLiteral = sqlStringLiteral(`%${escapeLikePattern(searchText)}%`);
+        const searchCondition = caseSensitive
+          ? `OBJECT_DEFINITION(p.object_id) LIKE ${sqlLikeContainsLiteral(searchText)}`
+          : `LOWER(OBJECT_DEFINITION(p.object_id)) LIKE LOWER(${searchPatternLiteral}) ESCAPE '\\'`;
 
-        const definitionColumn = includeDefinitions 
+        const definitionColumn = includeDefinitions
           ? "OBJECT_DEFINITION(p.object_id) as definition,"
           : "";
 
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(p.schema_id) as schema_name,
             p.name as procedure_name,
             p.type_desc as object_type,
@@ -359,7 +369,7 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
             ISNULL(ep.value, '') as description
           FROM sys.procedures p
           LEFT JOIN sys.extended_properties ep ON ep.major_id = p.object_id AND ep.minor_id = 0 AND ep.name = 'MS_Description'
-          WHERE SCHEMA_NAME(p.schema_id) = '${sanitizeName(schema)}'
+          WHERE SCHEMA_NAME(p.schema_id) = ${schemaLiteral}
             AND p.is_ms_shipped = 0
             AND OBJECT_DEFINITION(p.object_id) IS NOT NULL
             AND ${searchCondition}
@@ -398,7 +408,7 @@ export function registerStoredProcedureTools(server: McpServer, connectionManage
             return match;
           })
         };
-        
+
         return {
           content: [{
             type: "text",

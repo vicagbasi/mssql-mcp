@@ -143,20 +143,21 @@ The MSSQL MCP Server supports storing connection strings for **multiple differen
         "WINDOWS_PASSWORD": "secure-password", 
         "WINDOWS_DOMAIN": "COMPANY",
         
-        "MSSQL_CONNECTION_STRING": "Data Source=DefaultServer; Initial Catalog=DefaultDB; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "MSSQL_CONNECTION_STRING": "Data Source=DefaultServer; Initial Catalog=DefaultDB; Integrated Security=SSPI; TrustServerCertificate=False;",
         
-        "CONNECTION_CRM_APP": "Data Source=crm-server.company.com; Initial Catalog=CRM_Database; Integrated Security=SSPI; TrustServerCertificate=True;",
-        "CONNECTION_ECOMMERCE_APP": "Data Source=ecommerce-db.company.com; Initial Catalog=OnlineStore; Integrated Security=SSPI; TrustServerCertificate=True;",
+        "CONNECTION_CRM_APP": "Data Source=crm-server.company.com; Initial Catalog=CRM_Database; Integrated Security=SSPI; TrustServerCertificate=False;",
+        "CONNECTION_ECOMMERCE_APP": "Data Source=ecommerce-db.company.com; Initial Catalog=OnlineStore; Integrated Security=SSPI; TrustServerCertificate=False;",
       "args": ["C:\\path\\to\\mssql-mcp\\dist\\index.js"],
 ```
 
 ### Connection Priority
 
 The server resolves connections in this order:
-1. **Explicit `connectionString`** parameter (highest priority)
-2. **Named `connectionName`** parameter 
-3. **Default connection** from `MSSQL_CONNECTION_STRING`
-4. **Error** if none available
+1. **Named `connectionName`** parameter
+2. **Default connection** from `MSSQL_CONNECTION_STRING`
+3. **Error** if none available
+
+For security, MCP tool calls cannot provide arbitrary connection strings. Configure allowed connections through environment variables such as `MSSQL_CONNECTION_STRING` or `CONNECTION_CRM_APP`.
 
 ## 💬 Conversational Usage
 
@@ -180,7 +181,7 @@ Assistant: I'll list the tables in the CRM database...
 
 1. **Environment Variables**: Store sensitive credentials in environment variables, not configuration files
 2. **Minimal Permissions**: Use database accounts with only necessary read permissions
-3. **Connection Encryption**: Always use `TrustServerCertificate=True` or proper SSL certificates
+3. **Connection Encryption**: Prefer proper SQL Server TLS certificates. Use `TrustServerCertificate=True` only for trusted local/test environments.
 4. **Domain Accounts**: Use dedicated domain accounts for MCP server authentication
 5. **Network Security**: Ensure proper firewall and network segmentation
 

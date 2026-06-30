@@ -19,7 +19,7 @@
 | `list_tables` | List all tables in connected database | Schema overview |
 | `describe_table` | Get detailed table schema with columns/constraints | Table analysis |
 | `sample_data` | Retrieve sample data from tables (top 10 rows) | Data exploration |
-| `execute_query` | Execute custom SELECT queries (read-only) | Custom analysis |
+| `execute_query` | Execute custom SELECT queries when explicitly enabled with `MSSQL_ENABLE_EXECUTE_QUERY=true` | Custom analysis |
 | `get_relationships` | Get foreign key relationships between tables | Relationship mapping |
 
 ---

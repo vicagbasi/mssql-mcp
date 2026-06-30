@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { ConnectionManager, executeQuery } from "../utils/connection.js";
-import { sanitizeName } from "../utils/query.js";
+import { sqlStringLiteral } from "../utils/query.js";
 import { McpToolResponse } from "../types/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -18,16 +18,16 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
       title: "List All Constraints",
       description: "List all constraints (check, unique, foreign key, etc.) across tables in the database",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         constraintType: z.enum(["ALL", "CHECK", "UNIQUE", "FOREIGN_KEY", "PRIMARY_KEY", "DEFAULT"]).optional().describe("Filter by constraint type (default: ALL)")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", constraintType = "ALL" }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", constraintType = "ALL" }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
         let typeFilter = "";
         switch (constraintType) {
           case "CHECK":
@@ -46,9 +46,9 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
             typeFilter = "AND EXISTS (SELECT 1 FROM sys.default_constraints dc WHERE dc.name = tc.CONSTRAINT_NAME)";
             break;
         }
-        
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             tc.TABLE_SCHEMA,
             tc.TABLE_NAME,
             tc.CONSTRAINT_NAME,
@@ -59,19 +59,19 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
               WHERE ccu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
               FOR XML PATH('')
             ), 1, 2, '') as COLUMNS,
-            CASE 
+            CASE
               WHEN tc.CONSTRAINT_TYPE = 'CHECK' THEN cc.CHECK_CLAUSE
-              WHEN tc.CONSTRAINT_TYPE = 'FOREIGN KEY' THEN 
+              WHEN tc.CONSTRAINT_TYPE = 'FOREIGN KEY' THEN
                 kcu.REFERENCED_TABLE_SCHEMA + '.' + kcu.REFERENCED_TABLE_NAME + '(' + kcu.REFERENCED_COLUMN_NAME + ')'
               ELSE NULL
             END as CONSTRAINT_DEFINITION
           FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
           LEFT JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc ON tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
           LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-          WHERE tc.TABLE_SCHEMA = '${sanitizeName(schema)}' ${typeFilter}
+          WHERE tc.TABLE_SCHEMA = ${schemaLiteral} ${typeFilter}
           ORDER BY tc.TABLE_NAME, tc.CONSTRAINT_TYPE, tc.CONSTRAINT_NAME
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -98,27 +98,27 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
       title: "Analyze Check Constraints",
       description: "Extract and analyze business rules from check constraints",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         tableName: z.string().optional().describe("Filter by specific table name")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
-        const tableFilter = tableName ? `AND t.name = '${sanitizeName(tableName)}'` : "";
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
+        const tableFilter = tableName ? `AND t.name = ${sqlStringLiteral(tableName)}` : "";
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as table_schema,
             t.name as table_name,
             cc.name as constraint_name,
             cc.definition as check_clause,
             cc.is_disabled,
             cc.is_not_trusted,
-            CASE 
+            CASE
               WHEN cc.definition LIKE '%IN (%' THEN 'Enumeration/List Check'
               WHEN cc.definition LIKE '%>%' OR cc.definition LIKE '%<%' THEN 'Range Check'
               WHEN cc.definition LIKE '%LIKE%' THEN 'Pattern/Format Check'
@@ -138,10 +138,10 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
             ), 1, 2, '') as affected_columns
           FROM sys.check_constraints cc
           INNER JOIN sys.tables t ON cc.parent_object_id = t.object_id
-          WHERE SCHEMA_NAME(t.schema_id) = '${sanitizeName(schema)}' ${tableFilter}
+          WHERE SCHEMA_NAME(t.schema_id) = ${schemaLiteral} ${tableFilter}
           ORDER BY t.name, cc.name
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -168,17 +168,17 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
       title: "List User-Defined Data Types",
       description: "List all user-defined data types and their definitions",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo" }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo" }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as schema_name,
             t.name as type_name,
             st.name as base_type,
@@ -194,10 +194,10 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
           LEFT JOIN sys.default_constraints dc ON t.default_object_id = dc.object_id
           LEFT JOIN sys.check_constraints cc ON t.rule_object_id = cc.object_id
           WHERE t.is_user_defined = 1
-            AND SCHEMA_NAME(t.schema_id) = '${sanitizeName(schema)}'
+            AND SCHEMA_NAME(t.schema_id) = ${schemaLiteral}
           ORDER BY t.name
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -224,20 +224,20 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
       title: "Find Computed Columns",
       description: "List computed columns and their formulas to understand derived business logic",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         tableName: z.string().optional().describe("Filter by specific table name")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
-        const tableFilter = tableName ? `AND t.name = '${sanitizeName(tableName)}'` : "";
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
+        const tableFilter = tableName ? `AND t.name = ${sqlStringLiteral(tableName)}` : "";
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as table_schema,
             t.name as table_name,
             c.name as column_name,
@@ -248,7 +248,7 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
             cc.definition as computed_formula,
             c.is_persisted,
             c.is_nullable,
-            CASE 
+            CASE
               WHEN cc.definition LIKE '%+%' OR cc.definition LIKE '%-%' OR cc.definition LIKE '%*%' OR cc.definition LIKE '%/%' THEN 'Mathematical Calculation'
               WHEN cc.definition LIKE '%CONCAT%' OR cc.definition LIKE '%+%' AND TYPE_NAME(c.user_type_id) LIKE '%char%' THEN 'String Concatenation'
               WHEN cc.definition LIKE '%CASE%' THEN 'Conditional Logic'
@@ -260,10 +260,10 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
           FROM sys.computed_columns cc
           INNER JOIN sys.columns c ON cc.object_id = c.object_id AND cc.column_id = c.column_id
           INNER JOIN sys.tables t ON c.object_id = t.object_id
-          WHERE SCHEMA_NAME(t.schema_id) = '${sanitizeName(schema)}' ${tableFilter}
+          WHERE SCHEMA_NAME(t.schema_id) = ${schemaLiteral} ${tableFilter}
           ORDER BY t.name, c.name
         `);
-        
+
         return {
           content: [{
             type: "text",
@@ -290,27 +290,27 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
       title: "List Default Constraints",
       description: "List all default value constraints and their definitions",
       inputSchema: {
-        connectionString: z.string().optional().describe("SQL Server connection string (uses default if not provided)"),
         connectionName: z.string().optional().describe("Named connection to use (e.g., 'production', 'staging')"),
         schema: z.string().optional().describe("Schema name (default: dbo)"),
         tableName: z.string().optional().describe("Filter by specific table name")
       }
     },
-    async ({ connectionString, connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
+    async ({ connectionName, schema = "dbo", tableName }): Promise<McpToolResponse> => {
       try {
-        const connection = await connectionManager.getConnection(connectionString, connectionName);
-        
-        const tableFilter = tableName ? `AND t.name = '${sanitizeName(tableName)}'` : "";
-        
+        const connection = await connectionManager.getConnection(connectionName);
+        const schemaLiteral = sqlStringLiteral(schema);
+
+        const tableFilter = tableName ? `AND t.name = ${sqlStringLiteral(tableName)}` : "";
+
         const result = await executeQuery(connection, `
-          SELECT 
+          SELECT
             SCHEMA_NAME(t.schema_id) as table_schema,
             t.name as table_name,
             c.name as column_name,
             TYPE_NAME(c.user_type_id) as data_type,
             dc.name as constraint_name,
             dc.definition as default_value,
-            CASE 
+            CASE
               WHEN dc.definition LIKE '%GETDATE%' OR dc.definition LIKE '%GETUTCDATE%' THEN 'Current Date/Time'
               WHEN dc.definition LIKE '%NEWID%' THEN 'GUID Generation'
               WHEN dc.definition LIKE '%USER%' OR dc.definition LIKE '%SUSER%' THEN 'Current User'
@@ -322,10 +322,10 @@ export function registerConstraintAnalysisTools(server: McpServer, connectionMan
           FROM sys.default_constraints dc
           INNER JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id
           INNER JOIN sys.tables t ON c.object_id = t.object_id
-          WHERE SCHEMA_NAME(t.schema_id) = '${sanitizeName(schema)}' ${tableFilter}
+          WHERE SCHEMA_NAME(t.schema_id) = ${schemaLiteral} ${tableFilter}
           ORDER BY t.name, c.name
         `);
-        
+
         return {
           content: [{
             type: "text",
