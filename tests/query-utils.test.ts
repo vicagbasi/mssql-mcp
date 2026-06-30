@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { parseServerAddress } from "../src/utils/connection-string";
 import {
   buildObjectNameLiteral,
   buildTableReference,
@@ -51,5 +52,35 @@ describe("SQL query helpers", () => {
     expect(() => validateReadOnlyQuery("SELECT * INTO copied_users FROM Users")).toThrow();
     expect(() => validateReadOnlyQuery("SELECT * FROM OPENROWSET('SQLNCLI', 'server=x', 'SELECT 1')")).toThrow();
     expect(() => validateReadOnlyQuery("SELECT 1 WAITFOR DELAY '00:00:05'")).toThrow();
+  });
+});
+
+describe("connection string helpers", () => {
+  test("parses SQL Server host values without ports", () => {
+    expect(parseServerAddress("localhost")).toEqual({ server: "localhost" });
+    expect(parseServerAddress(" tcp:database.example.com ")).toEqual({
+      server: "tcp:database.example.com",
+    });
+  });
+
+  test("parses SQL Server host values with comma ports", () => {
+    expect(parseServerAddress("localhost,1433")).toEqual({
+      server: "localhost",
+      port: 1433,
+    });
+    expect(parseServerAddress(" tcp:database.example.com , 1500 ")).toEqual({
+      server: "tcp:database.example.com",
+      port: 1500,
+    });
+  });
+
+  test("rejects malformed SQL Server port values", () => {
+    expect(() => parseServerAddress(",1433")).toThrow();
+    expect(() => parseServerAddress("localhost,")).toThrow();
+    expect(() => parseServerAddress("localhost,abc")).toThrow();
+    expect(() => parseServerAddress("localhost,1433abc")).toThrow();
+    expect(() => parseServerAddress("localhost,0")).toThrow();
+    expect(() => parseServerAddress("localhost,65536")).toThrow();
+    expect(() => parseServerAddress("localhost,1433,extra")).toThrow();
   });
 });

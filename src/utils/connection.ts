@@ -4,6 +4,7 @@
 
 import { Connection, Request } from "tedious";
 import { ConnectionConfig, WindowsCredentials, NamedConnections } from "../types/index.js";
+import { parseServerAddress } from "./connection-string.js";
 
 export class ConnectionManager {
   private connections = new Map<string, Connection>();
@@ -122,7 +123,13 @@ export class ConnectionManager {
       switch (lowerKey) {
         case 'server':
         case 'data source':
-          config.server = value;
+          {
+            const parsedServer = parseServerAddress(value);
+            config.server = parsedServer.server;
+            if (parsedServer.port !== undefined) {
+              config.options.port = parsedServer.port;
+            }
+          }
           break;
         case 'database':
         case 'initial catalog':

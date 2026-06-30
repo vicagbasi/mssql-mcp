@@ -17,6 +17,7 @@ export interface ConnectionConfig {
     encrypt: boolean;
     trustServerCertificate: boolean;
     enableArithAbort: boolean;
+    port?: number;
   };
   authentication: {
     type:
